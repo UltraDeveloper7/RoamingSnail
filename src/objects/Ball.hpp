@@ -16,6 +16,7 @@ public:
 	void BounceOffHole(glm::vec2 surface_normal, float hole_radius);
 	void HandleGravity(float min_position);
 	void TakeFromHole();
+	void PlaceAt(const glm::vec3& p);
 	void SetDrawn(bool drawn);
 	void SetSpin(glm::vec2 spin) { spin_ = spin; }
 

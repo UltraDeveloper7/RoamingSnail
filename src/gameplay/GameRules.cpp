@@ -26,6 +26,17 @@ bool GameRules::AreAllGroupBallsPocketed(const std::vector<std::shared_ptr<Ball>
 }
 
 
+static void RespotEightBall(const std::vector<std::shared_ptr<Ball>>& balls,
+    const glm::vec3& spot)
+{
+    for (auto& b : balls) {
+        if (b->GetNumber() == 8) {
+            b->PlaceAt(spot);
+            break;
+        }
+    }
+}
+
 void GameRules::EvaluateEndOfShot(const std::vector<std::shared_ptr<Ball>>& balls, GameState& s)
 {
     if (s.IsGameOver()) return;
@@ -36,6 +47,8 @@ void GameRules::EvaluateEndOfShot(const std::vector<std::shared_ptr<Ball>>& ball
     bool pottedSolid = false;           // this shot only
     bool pottedStripe = false;          // this shot only
     bool pottedOwn = false;             // this shot only (meaningful when groups assigned)
+
+    bool nonEightPocketed = false;
 
     const bool onBreak = s.IsAfterBreak();
     const bool tableOpen = s.IsFirstShot();
@@ -87,6 +100,7 @@ void GameRules::EvaluateEndOfShot(const std::vector<std::shared_ptr<Ball>>& ball
             continue;
         }
 
+		nonEightPocketed = true;
         const int type = BallTypeFromNumber(num);
         if (type == 0) pottedSolid = true;
         if (type == 1) pottedStripe = true;
@@ -105,17 +119,40 @@ void GameRules::EvaluateEndOfShot(const std::vector<std::shared_ptr<Ball>>& ball
 
     // 6) 8-ball outcomes
     if (eightBallPocketed && onBreak) {
-        s.SetGameOver(true);
-        s.SetMessage(foul ? "Scratch with 8-ball on the break — loss."
-            : "8-ball on the break — WIN!", 2.f);
+        RespotEightBall(balls, s.EightInitialPos());
+
+        if (foul) {
+            s.SetMessage("Scratch on the break while 8 fell — 8 respotted, BIH to opponent.", 1.6f);
+            s.SwitchTurn(balls[0]->IsDrawn());
+        }
+        else {
+            // Breaker κρατά μόνο αν μπήκε ΚΑΙ κάποια άλλη μπάλα εκτός από το 8
+            if (nonEightPocketed) {
+                s.ResetShotClock();
+                s.SetMessage("8-ball on the break — respotted. Breaker continues.", 1.2f);
+            }
+            else {
+                s.SetMessage("8-ball on the break — respotted. Dry break.", 1.2f);
+                s.SwitchTurn(balls[0]->IsDrawn());
+            }
+        }
         return;
     }
+
     if (eightBallPocketed) {
         const bool cleared = AreAllGroupBallsPocketed(balls, curGroup);
-        s.SetGameOver(true);
-        s.SetMessage((!cleared || foul) ? "8-ball pocketed illegally — loss."
-            : "8-ball pocketed — WIN!", 2.f);
-        return;
+        if (cleared && !foul) {
+            s.SetGameOver(true);
+            s.SetMessage("8-ball pocketed — WIN!", 2.f);
+            return;
+        }
+
+        // Παράνομο 8-ball: respot + φάουλ + BIH
+        RespotEightBall(balls, s.EightInitialPos());
+        foul = true;
+        s.SetBallInHand(true);
+        s.SetMessage("8-ball pocketed illegally — respotted. Ball in hand for opponent.", 1.6f);
+        // δεν κάνουμε return: αφήνουμε το γενικό foul resolution (#8) να αλλάξει σειρά κ.λπ.
     }
 
     // 7) post-break (no 8-ball)

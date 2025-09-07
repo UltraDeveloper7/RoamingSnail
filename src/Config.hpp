@@ -99,7 +99,7 @@ struct Config final
 	inline static float spin_lateral_accel = 1.7f;   // gentler curve
 
 	// Rails/rim
-	inline static float rail_longitudinal_keep = 0.92f;  // keep more top/back off the rail
+	inline static float rail_longitudinal_keep = 0.88f;  // keep more top/back off the rail
 	inline static float rail_side_flip = 1.0f;
 	inline static float rail_throw_impulse = 0.08f;  // a bit subtler than before
 
@@ -108,11 +108,11 @@ struct Config final
 	inline static float cushion_restitution = 0.9f;     // elasticity for cushion bounces
 
 	// Friction & damping
-	inline static float cushion_friction = 0.10f;  
-	inline static float table_friction = 0.11f;  // only used in impact tangential exchange
-	inline static float linear_damping = 0.995f;  // treated as "per-second": pow(0.99, dt*60), Ball friction
-	inline static float angular_damping = 0.89f;  // spin lasts longer (per-second)
+	inline static float cushion_friction = 0.16f;  
+	inline static float table_friction = 0.16f;  // only used in impact tangential exchange
+	inline static float linear_damping = 0.985f;  // treated as "per-second": pow(0.99, dt*60), Ball friction
+	inline static float angular_damping = 0.82f;  // spin lasts longer (per-second)
 
-	inline static float spin_transfer_coef = 0.3f;     // how strongly spin is transferred in collisions
+	inline static float spin_transfer_coef = 0.25f;     // how strongly spin is transferred in collisions
 
 };

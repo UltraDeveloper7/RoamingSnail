@@ -2,7 +2,7 @@
 
 #include "../precompiled.h"
 #include "Player.hpp"
-
+#include "../objects/Ball.hpp" 
 
 class Ball; // fwd
 
@@ -101,6 +101,10 @@ public:
 	// Read-only access for rules logic.
 	const std::vector<int>& PocketedThisShot() const { return pocketed_this_shot_; }
 
+	// Eight-ball initial position (for resetting after a foul)
+	void SetEightInitialPos(const glm::vec3& p) { eight_initial_pos_ = p; }
+	const glm::vec3& EightInitialPos() const { return eight_initial_pos_; }
+
 private:
 	std::vector<Player> players_{ Player("Player 1"), Player("Player 2") };
 	int current_player_index_ = 0;
@@ -127,6 +131,7 @@ private:
 	bool ball_in_hand_ = false;
 	float shot_clock_ = SHOT_CLOCK_MAX;
 
+	glm::vec3 eight_initial_pos_{ 0.0f, Ball::radius_, 0.0f };
 
 	std::string current_message_;
 	float message_timer_ = 0.0f;

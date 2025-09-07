@@ -224,6 +224,15 @@ void Ball::TakeFromHole()
     spin_ = glm::vec2(0.0f);
 }
 
+void Ball::PlaceAt(const glm::vec3& p)
+{
+    is_in_hole_ = false;
+    is_drawn_ = true;
+    translation_ = p;
+    velocity_ = glm::vec3(0.0f);
+    spin_ = glm::vec2(0.0f);
+}
+
 void Ball::SetDrawn(const bool drawn)
 {
     is_drawn_ = drawn;

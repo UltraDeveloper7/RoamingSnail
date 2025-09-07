@@ -281,12 +281,30 @@ void World::Init() {
 			++index;
 		}
 	}
+
+	// --- Save initial 8-ball spot for future respots ---
+	for (const auto& b : balls_) {
+		if (b->GetNumber() == 8) {
+			state_.SetEightInitialPos(b->translation_);
+			break;
+		}
+	}
+
 }
 
 
 void World::Reset() {
 	for (const auto& ball : balls_) { ball->TakeFromHole(); ball->SetDrawn(true); }
 	Init();
+
+	// --- Save initial 8-ball spot for future respots (redundant but safe) ---
+	for (const auto& b : balls_) {
+		if (b->GetNumber() == 8) {
+			state_.SetEightInitialPos(b->translation_);
+			break;
+		}
+	}
+
 	wasDrawn_.fill(true);
 }
 
