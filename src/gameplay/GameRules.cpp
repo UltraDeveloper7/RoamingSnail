@@ -51,12 +51,9 @@ void GameRules::EvaluateEndOfShot(const std::vector<std::shared_ptr<Ball>>& ball
     bool nonEightPocketed = false;
 
     const bool onBreak = s.IsAfterBreak();
-    const bool tableOpen = s.IsFirstShot();
+    // Open table iff neither player has a group yet
+    const bool tableOpen = (s.GroupOfPlayer(0) == -1 && s.GroupOfPlayer(1) == -1);
     const int  curGroup = s.CurrentPlayerGroup(); // -1 if not assigned
-
-    // If both player groups are already set, table is no longer open.
-    if (s.GroupOfPlayer(0) != -1 && s.GroupOfPlayer(1) != -1)
-        s.SetFirstShot(false);
 
     // 1) cue ball pocketed => foul & BIH
     if (!balls[0]->IsDrawn()) {
@@ -158,6 +155,10 @@ void GameRules::EvaluateEndOfShot(const std::vector<std::shared_ptr<Ball>>& ball
     // 7) post-break (no 8-ball)
     if (onBreak) {
         s.SetAfterBreak(false);
+
+        // DO NOT assign on the break, even if balls fell. Keep table open.
+        // (Open table is now derived from groups == -1 anyway; just be explicit.)
+        s.SetFirstShot(true);  // optional, harmless; open-table is group-based now.
 
         if (foul) {
             s.SetMessage("Foul on the break. Ball in hand for opponent.", 1.2f);

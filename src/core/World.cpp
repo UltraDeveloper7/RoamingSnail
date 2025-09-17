@@ -218,7 +218,7 @@ bool World::IsLegalAimTarget(int hitIdx) const
 
 	const GameState& s = state_;           // your game state
 	const bool onBreak = s.IsAfterBreak();
-	const bool tableOpen = s.IsFirstShot(); // “open table” after break until groups assigned
+	const bool tableOpen = (s.GroupOfPlayer(0) == -1 && s.GroupOfPlayer(1) == -1);
 	const int  curGroup = s.CurrentPlayerGroup(); // -1 when not assigned yet
 
 	// On the break: any first contact is allowed (color = yellow)
