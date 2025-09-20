@@ -3,15 +3,46 @@
 
 #ifdef _WIN32
 #include <Windows.h>
+#elif defined(__APPLE__)
+#include <ApplicationServices/ApplicationServices.h>
+#elif defined(__linux__) && !defined(__ANDROID__)
+#include <X11/Xlib.h>
+#include <X11/XKBlib.h>
 #endif
 
 static bool IsCapsLockOn() {
 #ifdef _WIN32
-    return (GetKeyState(VK_CAPITAL) & 0x1) != 0; // toggle bit
+    // Windows: VK_CAPITAL toggle bit
+    return (GetKeyState(VK_CAPITAL) & 0x1) != 0;
+
+#elif defined(__APPLE__)
+    // macOS: query global HID flags (no Objective-C++ required)
+    CGEventFlags flags = CGEventSourceFlagsState(kCGEventSourceStateHIDSystemState);
+    return (flags & kCGEventFlagMaskAlphaShift) != 0;
+
+#elif defined(__linux__) && !defined(__ANDROID__)
+    // Linux/X11: use XKB indicator state. If no DISPLAY, return false.
+    const char* display_name = std::getenv("DISPLAY");
+    if (!display_name || !*display_name) return false;
+
+    Display* dpy = XOpenDisplay(nullptr);
+    if (!dpy) return false;
+
+    unsigned int stateMask = 0;
+    bool on = false;
+    if (XkbGetIndicatorState(dpy, XkbUseCoreKbd, &stateMask) == Success) {
+        // Typically bit 0 corresponds to Caps Lock
+        on = (stateMask & 0x01u) != 0;
+    }
+    XCloseDisplay(dpy);
+    return on;
+
 #else
-    return false; // TODO: implement for other platforms if needed
+    // Fallback (e.g., pure Wayland without X11): no reliable global query available
+    return false;
 #endif
 }
+
 
 namespace {
     // One source of truth for the help lines
