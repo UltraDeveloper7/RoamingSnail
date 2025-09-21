@@ -297,7 +297,7 @@ App::App() :
 }
 
 App::~App() {
-	Logger::Close();
+	//Logger::Close();
 }
 
 void App::Run()
