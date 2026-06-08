@@ -21,6 +21,9 @@ App::App() :
 
 	terrain_ = std::make_unique<Terrain>();
 	terrain_->Generate(100, 20.0f);
+
+	snail_ = std::make_unique<Snail>();
+	snail_->Init();
 }
 
 App::~App()
@@ -57,6 +60,15 @@ void App::OnUpdate()
 		camera_->Update(static_cast<float>(delta_time_));
 	}
 
+	if (snail_ && terrain_)
+	{
+		snail_->Update(
+			static_cast<float>(delta_time_),
+			window_->GetGLFWWindow(),
+			*terrain_
+		);
+	}
+
 	Render();
 }
 
@@ -74,14 +86,22 @@ void App::Render()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-	if (terrain_ && terrain_shader_ && camera_)
+	if (terrain_shader_ && camera_)
 	{
 		terrain_shader_->Bind();
 		terrain_shader_->SetMat4(camera_->GetViewMatrix(), "uView");
 		terrain_shader_->SetMat4(camera_->GetProjectionMatrix(), "uProjection");
 		terrain_shader_->Unbind();
+	}
 
+	if (terrain_ && terrain_shader_)
+	{
 		terrain_->Draw(terrain_shader_);
+	}
+
+	if (snail_ && terrain_shader_)
+	{
+		snail_->Draw(terrain_shader_);
 	}
 }
 

@@ -39,6 +39,8 @@ file(GLOB_RECURSE ROAMING_SNAIL_SRC CONFIGURE_DEPENDS
   "${CMAKE_SOURCE_DIR}/src/interface/Camera.hpp"
   "${CMAKE_SOURCE_DIR}/src/world/Terrain.cpp"
   "${CMAKE_SOURCE_DIR}/src/world/Terrain.hpp"
+  "${CMAKE_SOURCE_DIR}/src/player/Snail.cpp"
+  "${CMAKE_SOURCE_DIR}/src/player/Snail.hpp"
 )
 
 
@@ -47,7 +49,7 @@ if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/appicon.rc")
   list(APPEND ROAMING_SNAIL_SRC "${CMAKE_SOURCE_DIR}/appicon.rc")
 endif()
 
-add_executable(RoamingSnail ${ROAMING_SNAIL_SRC} "src/world/Terrain.cpp")
+add_executable(RoamingSnail ${ROAMING_SNAIL_SRC} "src/world/Terrain.cpp" "src/player/Snail.cpp")
 source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${ROAMING_SNAIL_SRC})
 
 # --- Target properties

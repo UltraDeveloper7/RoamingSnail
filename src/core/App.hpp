@@ -5,6 +5,7 @@
 #include "../interface/Camera.hpp"
 #include "../core/Shader.hpp"
 #include "../world/Terrain.hpp"
+#include "../player/Snail.hpp"
 
 class App
 {
@@ -31,6 +32,7 @@ private:
 
 	std::shared_ptr<Shader> terrain_shader_ = nullptr;
 	std::unique_ptr<Terrain> terrain_ = nullptr;
+	std::unique_ptr<Snail> snail_ = nullptr;
 
 	double delta_time_ = 0.0;
 	double last_frame_ = 0.0;
