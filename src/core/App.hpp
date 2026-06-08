@@ -3,6 +3,8 @@
 #include "../precompiled.h"
 #include "../interface/Window.hpp"
 #include "../interface/Camera.hpp"
+#include "../core/Shader.hpp"
+#include "../world/Terrain.hpp"
 
 class App
 {
@@ -26,6 +28,9 @@ private:
 private:
 	std::unique_ptr<Window> window_ = nullptr;
 	std::unique_ptr<Camera> camera_ = nullptr;
+
+	std::shared_ptr<Shader> terrain_shader_ = nullptr;
+	std::unique_ptr<Terrain> terrain_ = nullptr;
 
 	double delta_time_ = 0.0;
 	double last_frame_ = 0.0;
