@@ -20,9 +20,24 @@ public:
     glm::vec3 GetPosition() const { return position_; }
 
 private:
+    enum class Mode
+    {
+        Normal,
+        Retracting,
+        Shell,
+        Unretracting
+    };
+
+private:
     void CreateBoxMesh();
+    void HandleInput(float dt, GLFWwindow* window);
+    void UpdateRetractAnimation(float dt);
     void UpdateOrientationFromTerrain(const Terrain& terrain);
+
     glm::mat4 BuildModelMatrix(const glm::vec3& localOffset, const glm::vec3& localScale) const;
+
+    bool IsBodyVisible() const;
+    bool IsShellOnly() const;
 
 private:
     glm::vec3 position_{ 0.0f, 0.0f, 0.0f };
@@ -37,6 +52,12 @@ private:
     float animation_time_ = 0.0f;
     float creep_amount_ = 0.0f;
     bool is_moving_ = false;
+
+    Mode mode_ = Mode::Normal;
+
+    float retract_progress_ = 0.0f;
+    float retract_speed_ = 2.25f;
+    bool r_was_pressed_ = false;
 
     GLuint vao_ = 0;
     GLuint vbo_ = 0;

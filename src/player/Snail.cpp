@@ -23,9 +23,14 @@ void Snail::Init()
 {
     position_ = glm::vec3(0.0f, 0.0f, 0.0f);
     yaw_ = 0.0f;
+
     animation_time_ = 0.0f;
     creep_amount_ = 0.0f;
     is_moving_ = false;
+
+    mode_ = Mode::Normal;
+    retract_progress_ = 0.0f;
+    r_was_pressed_ = false;
 
     CreateBoxMesh();
 }
@@ -131,6 +136,38 @@ void Snail::Update(float dt, GLFWwindow* window, const Terrain& terrain)
         return;
     }
 
+    HandleInput(dt, window);
+    UpdateRetractAnimation(dt);
+
+    const float terrain_height = terrain.GetHeightAt(position_.x, position_.z);
+
+    const float shellHeightOffset = 0.38f;
+    const float bodyHeightOffset = 0.20f;
+    const float targetOffset = IsShellOnly() ? shellHeightOffset : bodyHeightOffset;
+
+    position_.y = terrain_height + targetOffset;
+
+    UpdateOrientationFromTerrain(terrain);
+}
+
+void Snail::HandleInput(float dt, GLFWwindow* window)
+{
+    const bool r_is_pressed = glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS;
+
+    if (r_is_pressed && !r_was_pressed_)
+    {
+        if (mode_ == Mode::Normal)
+        {
+            mode_ = Mode::Retracting;
+        }
+        else if (mode_ == Mode::Shell)
+        {
+            mode_ = Mode::Unretracting;
+        }
+    }
+
+    r_was_pressed_ = r_is_pressed;
+
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
         yaw_ += turn_speed_ * dt;
@@ -160,16 +197,43 @@ void Snail::Update(float dt, GLFWwindow* window, const Terrain& terrain)
     if (is_moving_)
     {
         move_dir = glm::normalize(move_dir);
-        position_ += move_dir * move_speed_ * dt;
-        animation_time_ += dt * 8.0f;
+
+        const float speedMultiplier = IsShellOnly() ? 1.8f : 1.0f;
+        position_ += move_dir * move_speed_ * speedMultiplier * dt;
+
+        if (mode_ == Mode::Normal)
+        {
+            animation_time_ += dt * 8.0f;
+        }
     }
 
-    creep_amount_ = is_moving_ ? std::sin(animation_time_) : 0.0f;
+    creep_amount_ = mode_ == Mode::Normal && is_moving_
+        ? std::sin(animation_time_)
+        : 0.0f;
+}
 
-    const float terrain_height = terrain.GetHeightAt(position_.x, position_.z);
-    position_.y = terrain_height + 0.20f;
+void Snail::UpdateRetractAnimation(float dt)
+{
+    if (mode_ == Mode::Retracting)
+    {
+        retract_progress_ += retract_speed_ * dt;
 
-    UpdateOrientationFromTerrain(terrain);
+        if (retract_progress_ >= 1.0f)
+        {
+            retract_progress_ = 1.0f;
+            mode_ = Mode::Shell;
+        }
+    }
+    else if (mode_ == Mode::Unretracting)
+    {
+        retract_progress_ -= retract_speed_ * dt;
+
+        if (retract_progress_ <= 0.0f)
+        {
+            retract_progress_ = 0.0f;
+            mode_ = Mode::Normal;
+        }
+    }
 }
 
 void Snail::UpdateOrientationFromTerrain(const Terrain& terrain)
@@ -208,6 +272,16 @@ glm::mat4 Snail::BuildModelMatrix(const glm::vec3& localOffset, const glm::vec3&
     return model;
 }
 
+bool Snail::IsBodyVisible() const
+{
+    return retract_progress_ < 0.98f;
+}
+
+bool Snail::IsShellOnly() const
+{
+    return mode_ == Mode::Shell || mode_ == Mode::Retracting;
+}
+
 void Snail::Draw(const std::shared_ptr<Shader>& shader) const
 {
     if (vao_ == 0)
@@ -217,40 +291,62 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
 
     glBindVertexArray(vao_);
 
+    const float bodyVisibility = 1.0f - retract_progress_;
+
     const float stretch = 1.0f + 0.08f * creep_amount_;
     const float squash = 1.0f - 0.05f * creep_amount_;
 
-    // Main body: long and low
+    if (IsBodyVisible())
     {
-        glm::mat4 bodyModel = BuildModelMatrix(
-            glm::vec3(0.0f, 0.05f, 0.0f),
-            glm::vec3(0.38f * squash, 0.18f, 0.80f * stretch)
-        );
+        // Body retracts backward and shrinks into the shell.
+        {
+            const glm::vec3 bodyOffset = glm::mix(
+                glm::vec3(0.0f, 0.05f, 0.0f),
+                glm::vec3(0.0f, 0.22f, 0.25f),
+                retract_progress_
+            );
 
-        shader->Bind();
-        shader->SetMat4(bodyModel, "uModel");
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
-        shader->Unbind();
+            const glm::vec3 bodyScale =
+                glm::vec3(0.38f * squash, 0.18f, 0.80f * stretch) *
+                glm::vec3(1.0f, bodyVisibility, bodyVisibility);
+
+            glm::mat4 bodyModel = BuildModelMatrix(bodyOffset, bodyScale);
+
+            shader->Bind();
+            shader->SetMat4(bodyModel, "uModel");
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
+            shader->Unbind();
+        }
+
+        // Head retracts faster into the shell.
+        {
+            const glm::vec3 headOffset = glm::mix(
+                glm::vec3(0.0f, 0.14f + 0.03f * creep_amount_, -0.62f),
+                glm::vec3(0.0f, 0.28f, 0.18f),
+                retract_progress_
+            );
+
+            const float headScaleFactor = glm::max(0.05f, bodyVisibility);
+
+            glm::mat4 headModel = BuildModelMatrix(
+                headOffset,
+                glm::vec3(0.28f, 0.22f, 0.24f) * headScaleFactor
+            );
+
+            shader->Bind();
+            shader->SetMat4(headModel, "uModel");
+            glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
+            shader->Unbind();
+        }
     }
 
-    // Head: slightly in front
+    // Shell is always visible. It slightly grows while retracting to make the transition readable.
     {
-        glm::mat4 headModel = BuildModelMatrix(
-            glm::vec3(0.0f, 0.14f + 0.03f * creep_amount_, -0.62f),
-            glm::vec3(0.28f, 0.22f, 0.24f)
-        );
+        const float shellPulse = 1.0f + 0.10f * retract_progress_;
 
-        shader->Bind();
-        shader->SetMat4(headModel, "uModel");
-        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
-        shader->Unbind();
-    }
-
-    // Shell: larger block on back
-    {
         glm::mat4 shellModel = BuildModelMatrix(
             glm::vec3(0.0f, 0.34f, 0.25f),
-            glm::vec3(0.42f, 0.42f, 0.42f)
+            glm::vec3(0.42f, 0.42f, 0.42f) * shellPulse
         );
 
         shader->Bind();
