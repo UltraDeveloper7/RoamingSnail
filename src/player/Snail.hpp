@@ -32,7 +32,13 @@ private:
     void CreateBoxMesh();
     void HandleInput(float dt, GLFWwindow* window);
     void UpdateRetractAnimation(float dt);
+
+    void UpdateNormalMovement(float dt, GLFWwindow* window);
+    void UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terrain);
+
     void UpdateOrientationFromTerrain(const Terrain& terrain);
+    void ClampToTerrainBounds();
+    float GetTerrainSlopeAngle(const Terrain& terrain) const;
 
     glm::mat4 BuildModelMatrix(const glm::vec3& localOffset, const glm::vec3& localScale) const;
 
@@ -58,6 +64,20 @@ private:
     float retract_progress_ = 0.0f;
     float retract_speed_ = 2.25f;
     bool r_was_pressed_ = false;
+
+    glm::vec3 shell_velocity_{ 0.0f };
+    glm::vec3 shell_angular_velocity_{ 0.0f };
+
+    float shell_radius_ = 0.42f;
+    float shell_acceleration_ = 7.0f;
+    float shell_max_speed_ = 8.0f;
+    float shell_friction_ = 0.985f;
+    float shell_slope_strength_ = 8.5f;
+    float shell_turn_strength_ = 2.6f;
+    float max_shell_climb_slope_ = glm::radians(32.0f);
+
+    float shell_rotation_angle_ = 0.0f;
+    glm::vec3 shell_rotation_axis_{ 1.0f, 0.0f, 0.0f };
 
     GLuint vao_ = 0;
     GLuint vbo_ = 0;
