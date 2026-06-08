@@ -14,12 +14,32 @@ if(MSVC)
 endif()
 
 # --- Sources
+#file(GLOB_RECURSE ROAMING_SNAIL_SRC CONFIGURE_DEPENDS
+#  "${CMAKE_SOURCE_DIR}/src/*.cpp"
+#  "${CMAKE_SOURCE_DIR}/src/*.c"
+#  "${CMAKE_SOURCE_DIR}/src/*.h"
+#  "${CMAKE_SOURCE_DIR}/src/*.hpp"
+#)
+
 file(GLOB_RECURSE ROAMING_SNAIL_SRC CONFIGURE_DEPENDS
-  "${CMAKE_SOURCE_DIR}/src/*.cpp"
-  "${CMAKE_SOURCE_DIR}/src/*.c"
-  "${CMAKE_SOURCE_DIR}/src/*.h"
-  "${CMAKE_SOURCE_DIR}/src/*.hpp"
+  "${CMAKE_SOURCE_DIR}/src/main.cpp"
+  "${CMAKE_SOURCE_DIR}/src/precompiled.cpp"
+  "${CMAKE_SOURCE_DIR}/src/precompiled.h"
+
+  "${CMAKE_SOURCE_DIR}/src/core/App.cpp"
+  "${CMAKE_SOURCE_DIR}/src/core/App.hpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Shader.cpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Shader.hpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Texture.cpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Texture.hpp"
+
+  "${CMAKE_SOURCE_DIR}/src/interface/Window.cpp"
+  "${CMAKE_SOURCE_DIR}/src/interface/Window.hpp"
+  "${CMAKE_SOURCE_DIR}/src/interface/Camera.cpp"
+  "${CMAKE_SOURCE_DIR}/src/interface/Camera.hpp"
 )
+
+
 
 if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/appicon.rc")
   list(APPEND ROAMING_SNAIL_SRC "${CMAKE_SOURCE_DIR}/appicon.rc")
@@ -33,7 +53,7 @@ set_target_properties(RoamingSnail PROPERTIES
   OUTPUT_NAME "RoamingSnail"
   FOLDER ""
   RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-  VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:RoamingSnail>"
+  VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/bin/Debug"
 )
 
 set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT RoamingSnail)
