@@ -40,6 +40,9 @@ private:
     void ClampToTerrainBounds();
     float GetTerrainSlopeAngle(const Terrain& terrain) const;
 
+    void UpdateShellSpin(float dt, const glm::vec3& terrainNormal);
+    float GetSurfaceFriction(const Terrain& terrain) const;
+
     glm::mat4 BuildModelMatrix(const glm::vec3& localOffset, const glm::vec3& localScale) const;
 
     bool IsBodyVisible() const;
@@ -76,8 +79,7 @@ private:
     float shell_turn_strength_ = 2.6f;
     float max_shell_climb_slope_ = glm::radians(32.0f);
 
-    float shell_rotation_angle_ = 0.0f;
-    glm::vec3 shell_rotation_axis_{ 1.0f, 0.0f, 0.0f };
+    glm::quat shell_rotation_{ 1.0f, 0.0f, 0.0f, 0.0f };
 
     GLuint vao_ = 0;
     GLuint vbo_ = 0;

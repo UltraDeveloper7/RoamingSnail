@@ -32,6 +32,10 @@ void Snail::Init()
     retract_progress_ = 0.0f;
     r_was_pressed_ = false;
 
+    shell_velocity_ = glm::vec3(0.0f);
+    shell_angular_velocity_ = glm::vec3(0.0f);
+    shell_rotation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+
     CreateBoxMesh();
 }
 
@@ -160,6 +164,7 @@ void Snail::Update(float dt, GLFWwindow* window, const Terrain& terrain)
 
     UpdateOrientationFromTerrain(terrain);
 }
+
 void Snail::HandleInput(float dt, GLFWwindow* window)
 {
     (void)dt;
@@ -171,12 +176,17 @@ void Snail::HandleInput(float dt, GLFWwindow* window)
         if (mode_ == Mode::Normal)
         {
             mode_ = Mode::Retracting;
+
             shell_velocity_ = glm::vec3(0.0f);
+            shell_angular_velocity_ = glm::vec3(0.0f);
         }
         else if (mode_ == Mode::Shell)
         {
             mode_ = Mode::Unretracting;
+
             shell_velocity_ = glm::vec3(0.0f);
+            shell_angular_velocity_ = glm::vec3(0.0f);
+            shell_rotation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
         }
     }
 
@@ -234,7 +244,7 @@ void Snail::UpdateNormalMovement(float dt, GLFWwindow* window)
 
 void Snail::UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terrain)
 {
-    const glm::vec3 terrain_normal = terrain.GetNormalAt(position_.x, position_.z);
+    const glm::vec3 terrainNormal = terrain.GetNormalAt(position_.x, position_.z);
 
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
     {
@@ -248,35 +258,37 @@ void Snail::UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terr
 
     forward_ = glm::normalize(glm::vec3(std::sin(yaw_), 0.0f, -std::cos(yaw_)));
 
-    glm::vec3 control_force{ 0.0f };
+    glm::vec3 controlForce{ 0.0f };
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        control_force += forward_ * shell_acceleration_;
+        controlForce += forward_ * shell_acceleration_;
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        control_force -= forward_ * shell_acceleration_ * 0.65f;
+        controlForce -= forward_ * shell_acceleration_ * 0.65f;
     }
 
-    const float slope_angle = GetTerrainSlopeAngle(terrain);
+    // Project control force onto terrain plane so it follows the surface.
+    controlForce = controlForce - glm::dot(controlForce, terrainNormal) * terrainNormal;
 
-    if (slope_angle > max_shell_climb_slope_)
+    const float slopeAngle = GetTerrainSlopeAngle(terrain);
+
+    // If slope is too steep, reduce uphill control.
+    if (slopeAngle > max_shell_climb_slope_)
     {
-        const glm::vec3 uphill_component =
-            terrain_normal * glm::dot(control_force, terrain_normal);
-
-        control_force -= uphill_component;
-        control_force *= 0.35f;
+        controlForce *= 0.35f;
     }
 
+    // Gravity projected onto terrain plane.
     const glm::vec3 gravity = glm::vec3(0.0f, -1.0f, 0.0f) * shell_slope_strength_;
-    const glm::vec3 slope_force = gravity - glm::dot(gravity, terrain_normal) * terrain_normal;
+    const glm::vec3 slopeForce = gravity - glm::dot(gravity, terrainNormal) * terrainNormal;
 
-    shell_velocity_ += (control_force + slope_force) * dt;
+    shell_velocity_ += (controlForce + slopeForce) * dt;
 
-    shell_velocity_.y = 0.0f;
+    // Keep velocity tangent to terrain.
+    shell_velocity_ = shell_velocity_ - glm::dot(shell_velocity_, terrainNormal) * terrainNormal;
 
     const float speed = glm::length(shell_velocity_);
 
@@ -287,7 +299,8 @@ void Snail::UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terr
 
     position_ += shell_velocity_ * dt;
 
-    const float frictionFactor = std::pow(shell_friction_, dt * 60.0f);
+    const float surfaceFriction = GetSurfaceFriction(terrain);
+    const float frictionFactor = std::pow(surfaceFriction, dt * 60.0f);
     shell_velocity_ *= frictionFactor;
 
     if (glm::length(shell_velocity_) < 0.015f)
@@ -295,23 +308,41 @@ void Snail::UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terr
         shell_velocity_ = glm::vec3(0.0f);
     }
 
-    if (glm::length(shell_velocity_) > 0.001f)
-    {
-        const glm::vec3 velocity_dir = glm::normalize(shell_velocity_);
-        shell_rotation_axis_ = glm::normalize(glm::cross(terrain_normal, velocity_dir));
-
-        const float distance = glm::length(shell_velocity_) * dt;
-        shell_rotation_angle_ += distance / shell_radius_;
-
-        shell_angular_velocity_ = shell_rotation_axis_ * (glm::length(shell_velocity_) / shell_radius_);
-    }
-    else
-    {
-        shell_angular_velocity_ = glm::vec3(0.0f);
-    }
+    UpdateShellSpin(dt, terrainNormal);
 
     is_moving_ = glm::length(shell_velocity_) > 0.05f;
     creep_amount_ = 0.0f;
+}
+
+void Snail::UpdateShellSpin(float dt, const glm::vec3& terrainNormal)
+{
+    const float speed = glm::length(shell_velocity_);
+
+    if (speed < 0.001f)
+    {
+        shell_angular_velocity_ = glm::vec3(0.0f);
+        return;
+    }
+
+    const glm::vec3 velocityDir = glm::normalize(shell_velocity_);
+
+    glm::vec3 rotationAxis = glm::cross(terrainNormal, velocityDir);
+
+    if (glm::length(rotationAxis) < 0.001f)
+    {
+        shell_angular_velocity_ = glm::vec3(0.0f);
+        return;
+    }
+
+    rotationAxis = glm::normalize(rotationAxis);
+
+    const float angularSpeed = speed / shell_radius_;
+    const float angle = angularSpeed * dt;
+
+    glm::quat deltaRotation = glm::angleAxis(angle, rotationAxis);
+    shell_rotation_ = glm::normalize(deltaRotation * shell_rotation_);
+
+    shell_angular_velocity_ = rotationAxis * angularSpeed;
 }
 
 void Snail::ClampToTerrainBounds()
@@ -338,6 +369,20 @@ float Snail::GetTerrainSlopeAngle(const Terrain& terrain) const
     const float d = glm::clamp(glm::dot(normal, glm::vec3(0.0f, 1.0f, 0.0f)), -1.0f, 1.0f);
 
     return std::acos(d);
+}
+
+float Snail::GetSurfaceFriction(const Terrain& terrain) const
+{
+    const float slopeAngle = GetTerrainSlopeAngle(terrain);
+
+    // Flat ground: more friction.
+    // Steeper slopes: less friction, so the shell rolls longer.
+    const float t = glm::clamp(slopeAngle / glm::radians(45.0f), 0.0f, 1.0f);
+
+    const float flatFriction = 0.982f;
+    const float slopeFriction = 0.994f;
+
+    return glm::mix(flatFriction, slopeFriction, t);
 }
 
 void Snail::UpdateRetractAnimation(float dt)
@@ -479,7 +524,7 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
 
         if (mode_ == Mode::Shell)
         {
-            shellModel = glm::rotate(shellModel, shell_rotation_angle_, shell_rotation_axis_);
+            shellModel *= glm::mat4_cast(shell_rotation_);
         }
 
         shader->Bind();
