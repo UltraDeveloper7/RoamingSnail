@@ -24,9 +24,9 @@ private:
 	glm::mat4 view_matrix_{ 1.0f };
 
 	glm::vec2 prior_cursor_{ 0.0f };
-	glm::vec3 position_{ 0.0f, 3.0f, 6.0f };
+	glm::vec3 position_{ 0.0f, 6.0f, 12.0f };
 
-	float pitch_{ -0.35f };
+	float pitch_{ -0.45f };
 	float yaw_{ -glm::half_pi<float>() };
 
 	bool cursor_initialized_ = false;
