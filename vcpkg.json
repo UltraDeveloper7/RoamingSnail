@@ -1,14 +1,14 @@
 {
-  "name": "eight-ball-pool",
+  "name": "roaming-snail",
   "version-string": "0.1.0",
   "dependencies": [
     "glfw3",
     "glad",
+    "glm",
     "freetype",
     "tinyxml2",
-    "glm",
-    "earcut-hpp",
     "tinyobjloader",
-    "stb"
+    "stb",
+    "earcut-hpp"
   ]
 }
