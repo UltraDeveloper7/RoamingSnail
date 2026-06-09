@@ -21,6 +21,7 @@ void main()
     if (uUseTexture)
     {
         baseColor = texture(uTerrainTexture, vTexCoord).rgb;
+        baseColor = pow(baseColor, vec3(2.2));
     }
 
     vec3 ambient = baseColor * 0.35;

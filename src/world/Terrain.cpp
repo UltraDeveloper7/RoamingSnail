@@ -59,7 +59,7 @@ void Terrain::Generate(int resolution, float size)
             vertex.position = glm::vec3(worldX, GetProceduralHeight(worldX, worldZ), worldZ);
             vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
 
-            const float uvScale = 0.18f;
+            const float uvScale = 0.30f;
             glm::vec2 uv(worldX * uvScale, worldZ * uvScale);
 
             const int tileX = static_cast<int>(std::floor(worldX));
