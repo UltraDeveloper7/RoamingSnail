@@ -1,0 +1,17 @@
+newmtl ShellBase
+Ka 0.10 0.055 0.025
+Kd 0.40 0.23 0.10
+Ks 0.24 0.16 0.10
+Ns 64.0
+d 1.0
+map_Kd snail/shell_diffuse.jpg
+map_Pr snail/shell_roughness.jpg
+
+newmtl ShellBand
+Ka 0.18 0.10 0.04
+Kd 0.72 0.43 0.16
+Ks 0.26 0.18 0.10
+Ns 70.0
+d 1.0
+map_Kd snail/shell_diffuse.jpg
+map_Pr snail/shell_roughness.jpg

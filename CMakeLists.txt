@@ -43,6 +43,17 @@ file(GLOB_RECURSE ROAMING_SNAIL_SRC CONFIGURE_DEPENDS
   "${CMAKE_SOURCE_DIR}/src/player/Snail.hpp"
   "${CMAKE_SOURCE_DIR}/src/world/Skybox.cpp"
   "${CMAKE_SOURCE_DIR}/src/world/Skybox.hpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Loader.cpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Loader.hpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Object.cpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Object.hpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Mesh.cpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Mesh.hpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Material.cpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Material.hpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Texture.cpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Texture.hpp"
+  "${CMAKE_SOURCE_DIR}/src/core/Vertex.hpp"
 
 )
 

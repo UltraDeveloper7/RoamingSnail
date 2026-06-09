@@ -1,0 +1,20 @@
+newmtl SlugBody
+Ka 0.18 0.12 0.08
+Kd 0.62 0.46 0.30
+Ks 0.10 0.08 0.06
+Ns 24.0
+map_Kd snail/body_diffuse.jpg
+map_Bump snail/body_normal.jpg
+
+newmtl SlugBelly
+Ka 0.20 0.16 0.10
+Kd 0.76 0.58 0.38
+Ks 0.08 0.06 0.04
+Ns 18.0
+map_Kd snail/body_diffuse.jpg
+
+newmtl Eye
+Ka 0.01 0.01 0.01
+Kd 0.02 0.02 0.02
+Ks 0.60 0.60 0.55
+Ns 96.0

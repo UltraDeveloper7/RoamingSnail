@@ -37,6 +37,20 @@ void Snail::Init()
     shell_rotation_ = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
 
     CreateBoxMesh();
+    try
+    {
+        std::cout << "Loading slug model: snail/slug_body.obj" << std::endl;
+        std::cout << "Loading shell model: shell/shell.obj" << std::endl;
+
+        slug_object_ = std::make_unique<Object>("snail/slug_body.obj");
+        shell_object_ = std::make_unique<Object>("shell/shell.obj");
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Failed to load snail objects: " << e.what() << std::endl;
+        slug_object_.reset();
+        shell_object_.reset();
+    }
 }
 
 void Snail::CreateBoxMesh()
@@ -462,6 +476,90 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
         return;
     }
 
+    /*
+        Preferred path:
+        Use the old 8-Ball-Pool Object / Mesh / Material / Texture pipeline.
+
+        Normal:
+            draw slug body + shell
+
+        Retracting:
+            draw slug body shrinking/moving into shell + shell
+
+        Shell:
+            draw only shell, with rolling quaternion rotation
+
+        Unretracting:
+            draw slug body growing/moving out + shell
+
+        If OBJ/MTL loading failed, fallback to old cube placeholder below.
+    */
+    if (slug_object_ && shell_object_)
+    {
+        shader->Bind();
+
+        shader->SetBool(true, "uUseMaterial");
+        shader->SetBool(false, "uUseTexture");
+        shader->SetBool(false, "uUseObjectColor");
+        shader->SetBool(false, "uUseVertexColor");
+
+        shader->Unbind();
+
+        const float bodyVisibility = 1.0f - retract_progress_;
+
+        if (IsBodyVisible())
+        {
+            const glm::vec3 bodyOffset = glm::mix(
+                glm::vec3(0.0f, 0.05f, 0.0f),
+                glm::vec3(0.0f, 0.22f, 0.25f),
+                retract_progress_
+            );
+
+            const float retractScale = glm::max(0.08f, bodyVisibility);
+
+            const glm::vec3 bodyScale = glm::vec3(
+                0.75f,
+                0.75f * retractScale,
+                0.75f * retractScale
+            );
+
+            glm::mat4 bodyModel = BuildModelMatrix(bodyOffset, bodyScale);
+
+            slug_object_->DrawWithModelMatrix(shader, bodyModel);
+        }
+
+        {
+            const float shellPulse = 1.0f + 0.10f * retract_progress_;
+
+            glm::mat4 shellModel = BuildModelMatrix(
+                glm::vec3(0.0f, 0.34f, 0.25f),
+                glm::vec3(0.75f) * shellPulse
+            );
+
+            if (mode_ == Mode::Shell)
+            {
+                shellModel *= glm::mat4_cast(shell_rotation_);
+            }
+
+            shell_object_->DrawWithModelMatrix(shader, shellModel);
+        }
+
+        shader->Bind();
+
+        shader->SetBool(false, "uUseMaterial");
+        shader->SetBool(false, "uUseVertexColor");
+        shader->SetBool(false, "uUseObjectColor");
+        shader->SetBool(false, "uUseTexture");
+
+        shader->Unbind();
+
+        return;
+    }
+
+    // ------------------------------------------------------------
+    // Fallback path: old placeholder boxes
+    // ------------------------------------------------------------
+
     glBindVertexArray(vao_);
 
     const float bodyVisibility = 1.0f - retract_progress_;
@@ -486,6 +584,11 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
             glm::mat4 bodyModel = BuildModelMatrix(bodyOffset, bodyScale);
 
             shader->Bind();
+            shader->SetBool(false, "uUseMaterial");
+            shader->SetBool(false, "uUseTexture");
+            shader->SetBool(false, "uUseVertexColor");
+            shader->SetBool(true, "uUseObjectColor");
+            shader->SetVec3(glm::vec3(0.55f, 0.42f, 0.28f), "uObjectColor");
             shader->SetMat4(bodyModel, "uModel");
             glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
             shader->Unbind();
@@ -507,6 +610,11 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
             );
 
             shader->Bind();
+            shader->SetBool(false, "uUseMaterial");
+            shader->SetBool(false, "uUseTexture");
+            shader->SetBool(false, "uUseVertexColor");
+            shader->SetBool(true, "uUseObjectColor");
+            shader->SetVec3(glm::vec3(0.68f, 0.52f, 0.35f), "uObjectColor");
             shader->SetMat4(headModel, "uModel");
             glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
             shader->Unbind();
@@ -528,10 +636,22 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
         }
 
         shader->Bind();
+        shader->SetBool(false, "uUseMaterial");
+        shader->SetBool(false, "uUseTexture");
+        shader->SetBool(false, "uUseVertexColor");
+        shader->SetBool(true, "uUseObjectColor");
+        shader->SetVec3(glm::vec3(0.28f, 0.16f, 0.08f), "uObjectColor");
         shader->SetMat4(shellModel, "uModel");
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
         shader->Unbind();
     }
+
+    shader->Bind();
+    shader->SetBool(false, "uUseObjectColor");
+    shader->SetBool(false, "uUseMaterial");
+    shader->SetBool(false, "uUseVertexColor");
+    shader->SetBool(false, "uUseTexture");
+    shader->Unbind();
 
     glBindVertexArray(0);
 }

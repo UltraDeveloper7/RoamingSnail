@@ -13,6 +13,7 @@ public:
 	explicit Object(const std::string& path);
 
 	virtual void Draw(const std::shared_ptr<Shader>& shader);
+	void DrawWithModelMatrix(const std::shared_ptr<Shader>& shader, const glm::mat4& modelMatrix);
 	void Translate(const glm::vec3& translation);
 	void Scale(const glm::vec3& scale);
 	void Rotate(const glm::vec3& rotation_axis, float angle);

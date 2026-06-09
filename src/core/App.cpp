@@ -101,6 +101,7 @@ void App::Render()
 	if (terrain_shader_ && camera_)
 	{
 		terrain_shader_->Bind();
+
 		terrain_shader_->SetMat4(camera_->GetViewMatrix(), "uView");
 		terrain_shader_->SetMat4(camera_->GetProjectionMatrix(), "uProjection");
 
@@ -108,18 +109,20 @@ void App::Render()
 		terrain_shader_->SetVec3(glm::vec3(1.9f, 1.65f, 1.25f), "uSunColor");
 		terrain_shader_->SetVec3(glm::vec3(0.34f, 0.38f, 0.40f), "uAmbientColor");
 
-		// Fog color κοντά στο χρώμα του HDR ορίζοντα.
 		terrain_shader_->SetVec3(glm::vec3(0.62f, 0.68f, 0.70f), "uFogColor");
 		terrain_shader_->SetFloat(22.0f, "uFogStart");
 		terrain_shader_->SetFloat(42.0f, "uFogEnd");
 
+		// Terrain texture unit
 		terrain_shader_->SetInt(0, "uTerrainTexture");
 
-		// Αν έχεις SetBool στη Shader class:
-		terrain_shader_->SetBool(terrain_texture_ != 0, "uUseTexture");
-
-		// Αν ΔΕΝ έχεις SetBool, σβήσε την πάνω γραμμή και βάλε:
-		// terrain_shader_->SetInt(terrain_texture_ != 0 ? 1 : 0, "uUseTexture");
+		// Old Material pipeline texture units.
+		// These match Material::Bind(): diffuse=4, roughness=5, normal=6, ao=7, metallic=8.
+		terrain_shader_->SetInt(4, "material.diffuseMap");
+		terrain_shader_->SetInt(5, "material.roughnessMap");
+		terrain_shader_->SetInt(6, "material.normalMap");
+		terrain_shader_->SetInt(7, "material.aoMap");
+		terrain_shader_->SetInt(8, "material.metallicMap");
 
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, terrain_texture_);
@@ -129,11 +132,22 @@ void App::Render()
 
 	if (terrain_ && terrain_shader_)
 	{
+		terrain_shader_->Bind();
+
+		// Terrain mode
+		terrain_shader_->SetBool(terrain_texture_ != 0, "uUseTexture");
+		terrain_shader_->SetBool(false, "uUseObjectColor");
+		terrain_shader_->SetBool(false, "uUseVertexColor");
+		terrain_shader_->SetBool(false, "uUseMaterial");
+
+		terrain_shader_->Unbind();
+
 		terrain_->Draw(terrain_shader_);
 	}
 
 	if (snail_ && terrain_shader_)
 	{
+		// Snail::Draw() will enable uUseMaterial when drawing Object/Material models.
 		snail_->Draw(terrain_shader_);
 	}
 
@@ -145,7 +159,6 @@ void App::Render()
 			camera_->GetProjectionMatrix()
 		);
 	}
-
 }
 
 void App::OnResize() const

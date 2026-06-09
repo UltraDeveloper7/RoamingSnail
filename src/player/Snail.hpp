@@ -2,6 +2,7 @@
 
 #include "../precompiled.h"
 #include "../core/Shader.hpp"
+#include "../core/Object.hpp"
 #include "../world/Terrain.hpp"
 
 class Snail
@@ -49,6 +50,10 @@ private:
     bool IsShellOnly() const;
 
 private:
+
+    std::unique_ptr<Object> slug_object_ = nullptr;
+    std::unique_ptr<Object> shell_object_ = nullptr;
+
     glm::vec3 position_{ 0.0f, 0.0f, 0.0f };
     glm::vec3 forward_{ 0.0f, 0.0f, -1.0f };
     glm::vec3 up_{ 0.0f, 1.0f, 0.0f };

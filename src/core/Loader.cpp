@@ -30,10 +30,18 @@ void Loader::LoadModel(const std::string& path, std::vector<std::shared_ptr<Mesh
 	reader_config.triangulation_method = "earcut";
 
 	const auto model_path = std::filesystem::current_path() / "assets/models" / path;
+	reader_config.mtl_search_path = model_path.parent_path().string();
 
 	tinyobj::ObjReader reader;
 
-	if (!reader.ParseFromFile(model_path.string(), reader_config)) {
+	if (!reader.ParseFromFile(model_path.string(), reader_config))
+	{
+		std::cerr << "TinyObj failed to parse model." << std::endl;
+		std::cerr << "Input path: " << path << std::endl;
+		std::cerr << "Resolved path: " << model_path.string() << std::endl;
+		std::cerr << "TinyObj error: " << reader.Error() << std::endl;
+		std::cerr << "TinyObj warning: " << reader.Warning() << std::endl;
+
 		throwf("Failed to load model", path);
 	}
 
@@ -62,13 +70,19 @@ std::shared_ptr<Texture> Loader::LoadTexture(const std::string& path)
 	int channels, width, height;
 	const auto image_path = std::filesystem::current_path() / "assets/textures" / path;
 
-	if (!stbi_info(image_path.string().c_str(), &width, &height, &channels)) {
-		throwf("Image cannot be found or decoded", path);
+	if (!stbi_info(image_path.string().c_str(), &width, &height, &channels))
+	{
+		std::cerr << "Texture not found or cannot be decoded: "
+			<< image_path.string() << std::endl;
+		return nullptr;
 	}
 
 	unsigned char* image_data = stbi_load(image_path.string().c_str(), &width, &height, &channels, 0);
-	if (!image_data) {
-		throwf("stbi_load failed for image", path);
+	if (!image_data)
+	{
+		std::cerr << "stbi_load failed for image: "
+			<< image_path.string() << std::endl;
+		return nullptr;
 	}
 
 	const auto texture = std::make_shared<Texture>(image_data, width, height, channels);
@@ -187,7 +201,14 @@ void Loader::LoadMeshes(std::vector<std::shared_ptr<Mesh>>& meshes, const std::v
 			index_offset += 3;
 		}
 
-		meshes.push_back(std::make_shared<Mesh>(vertices, indices, shape.mesh.material_ids[0]));
+		int materialId = 0;
+
+		if (!shape.mesh.material_ids.empty() && shape.mesh.material_ids[0] >= 0)
+		{
+			materialId = shape.mesh.material_ids[0];
+		}
+
+		meshes.push_back(std::make_shared<Mesh>(vertices, indices, materialId));
 	}
 }
 

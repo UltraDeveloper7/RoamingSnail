@@ -9,10 +9,33 @@ Object::Object(const std::string& path)
 
 void Object::Draw(const std::shared_ptr<Shader>& shader)
 {
-
 	shader->Bind();
 
-	shader->SetMat4(GetModelMatrix(), "modelMatrix");
+	const glm::mat4 modelMatrix = GetModelMatrix();
+
+	shader->SetMat4(modelMatrix, "uModel");
+	shader->SetMat4(modelMatrix, "modelMatrix");
+
+	for (const auto& mesh : meshes_)
+	{
+		const auto material = materials_[mesh->GetMaterialId()];
+
+		material->Bind(shader);
+		mesh->Bind();
+		mesh->Draw();
+		mesh->Unbind();
+		material->Unbind(shader);
+	}
+
+	shader->Unbind();
+}
+
+void Object::DrawWithModelMatrix(const std::shared_ptr<Shader>& shader, const glm::mat4& modelMatrix)
+{
+	shader->Bind();
+
+	shader->SetMat4(modelMatrix, "uModel");
+	shader->SetMat4(modelMatrix, "modelMatrix");
 
 	for (const auto& mesh : meshes_)
 	{
