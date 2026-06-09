@@ -23,11 +23,13 @@ private:
     {
         glm::vec3 position;
         glm::vec3 normal;
+        glm::vec2 uv;
     };
 
 private:
     float GetProceduralHeight(float x, float z) const;
     void RecalculateNormals();
+    glm::vec2 TransformTileUV(glm::vec2 uv, int tileX, int tileZ) const;
 
 private:
     std::vector<Vertex> vertices_;

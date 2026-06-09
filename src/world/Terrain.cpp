@@ -59,6 +59,14 @@ void Terrain::Generate(int resolution, float size)
             vertex.position = glm::vec3(worldX, GetProceduralHeight(worldX, worldZ), worldZ);
             vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
 
+            const float uvScale = 0.18f;
+            glm::vec2 uv(worldX * uvScale, worldZ * uvScale);
+
+            const int tileX = static_cast<int>(std::floor(worldX));
+            const int tileZ = static_cast<int>(std::floor(worldZ));
+
+            vertex.uv = TransformTileUV(uv, tileX, tileZ);
+
             vertices_.push_back(vertex);
         }
     }
@@ -137,6 +145,16 @@ void Terrain::Generate(int resolution, float size)
     );
     glEnableVertexAttribArray(1);
 
+    glVertexAttribPointer(
+        2,
+        2,
+        GL_FLOAT,
+        GL_FALSE,
+        sizeof(Vertex),
+        reinterpret_cast<void*>(offsetof(Vertex, uv))
+    );
+    glEnableVertexAttribArray(2);
+
     glBindVertexArray(0);
 }
 
@@ -193,6 +211,47 @@ glm::vec3 Terrain::GetNormalAt(float x, float z) const
     glm::vec3 normal = glm::normalize(glm::vec3(hL - hR, 2.0f * eps, hD - hU));
     return normal;
 }
+
+glm::vec2 Terrain::TransformTileUV(glm::vec2 uv, int tileX, int tileZ) const
+{
+    unsigned int seed =
+        static_cast<unsigned int>(tileX * 73856093) ^
+        static_cast<unsigned int>(tileZ * 19349663);
+
+    const int rotation = static_cast<int>(seed % 4);
+    const bool flipX = ((seed >> 3) & 1u) != 0u;
+    const bool flipY = ((seed >> 4) & 1u) != 0u;
+
+    glm::vec2 f = glm::fract(uv);
+
+    if (flipX)
+    {
+        f.x = 1.0f - f.x;
+    }
+
+    if (flipY)
+    {
+        f.y = 1.0f - f.y;
+    }
+
+    glm::vec2 rotated = f;
+
+    if (rotation == 1)
+    {
+        rotated = glm::vec2(f.y, 1.0f - f.x);
+    }
+    else if (rotation == 2)
+    {
+        rotated = glm::vec2(1.0f - f.x, 1.0f - f.y);
+    }
+    else if (rotation == 3)
+    {
+        rotated = glm::vec2(1.0f - f.y, f.x);
+    }
+
+    return glm::floor(uv) + rotated;
+}
+
 
 void Terrain::Draw(const std::shared_ptr<Shader>& shader) const
 {

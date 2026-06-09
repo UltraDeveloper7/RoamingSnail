@@ -25,6 +25,7 @@ private:
 	void OnResize() const;
 	void ProcessInput();
 	void Render();
+	void LoadTerrainTexture();
 
 private:
 	std::unique_ptr<Window> window_ = nullptr;
@@ -33,6 +34,8 @@ private:
 	std::shared_ptr<Shader> terrain_shader_ = nullptr;
 	std::unique_ptr<Terrain> terrain_ = nullptr;
 	std::unique_ptr<Snail> snail_ = nullptr;
+
+	GLuint terrain_texture_ = 0;
 
 	double delta_time_ = 0.0;
 	double last_frame_ = 0.0;

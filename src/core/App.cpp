@@ -1,5 +1,7 @@
 ﻿#include "../precompiled.h"
 #include "App.hpp"
+#include <stb_image.h>
+
 
 App::App() :
 	window_(std::make_unique<Window>()),
@@ -18,6 +20,8 @@ App::App() :
 		"terrain.vertexshader",
 		"terrain.fragmentshader"
 	);
+
+	LoadTerrainTexture();
 
 	terrain_ = std::make_unique<Terrain>();
 	terrain_->Generate(100, 20.0f);
@@ -91,6 +95,18 @@ void App::Render()
 		terrain_shader_->Bind();
 		terrain_shader_->SetMat4(camera_->GetViewMatrix(), "uView");
 		terrain_shader_->SetMat4(camera_->GetProjectionMatrix(), "uProjection");
+
+		terrain_shader_->SetInt(0, "uTerrainTexture");
+
+		// Αν έχεις SetBool στη Shader class:
+		terrain_shader_->SetBool(terrain_texture_ != 0, "uUseTexture");
+
+		// Αν ΔΕΝ έχεις SetBool, σβήσε την πάνω γραμμή και βάλε:
+		// terrain_shader_->SetInt(terrain_texture_ != 0 ? 1 : 0, "uUseTexture");
+
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, terrain_texture_);
+
 		terrain_shader_->Unbind();
 	}
 
@@ -118,4 +134,68 @@ void App::OnResize() const
 	}
 
 	window_->ResetResizedFlag();
+}
+
+void App::LoadTerrainTexture()
+{
+	const char* texturePath = "assets/textures/terrain/grass.jpg";
+
+	int width = 0;
+	int height = 0;
+	int channels = 0;
+
+	stbi_set_flip_vertically_on_load(true);
+
+	unsigned char* data = stbi_load(texturePath, &width, &height, &channels, 0);
+
+	if (!data)
+	{
+		std::cerr << "Failed to load terrain texture: " << texturePath << std::endl;
+		terrain_texture_ = 0;
+		return;
+	}
+
+	GLenum format = GL_RGB;
+
+	if (channels == 1)
+	{
+		format = GL_RED;
+	}
+	else if (channels == 3)
+	{
+		format = GL_RGB;
+	}
+	else if (channels == 4)
+	{
+		format = GL_RGBA;
+	}
+
+	glGenTextures(1, &terrain_texture_);
+	glBindTexture(GL_TEXTURE_2D, terrain_texture_);
+
+	glTexImage2D(
+		GL_TEXTURE_2D,
+		0,
+		format,
+		width,
+		height,
+		0,
+		format,
+		GL_UNSIGNED_BYTE,
+		data
+	);
+
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+	stbi_image_free(data);
+
+	std::cout << "Loaded terrain texture: " << texturePath
+		<< " (" << width << "x" << height << ", channels=" << channels << ")"
+		<< std::endl;
 }
