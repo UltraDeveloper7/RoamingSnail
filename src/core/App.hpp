@@ -5,7 +5,9 @@
 #include "../interface/Camera.hpp"
 #include "../core/Shader.hpp"
 #include "../world/Terrain.hpp"
+#include "../world/Skybox.hpp"
 #include "../player/Snail.hpp"
+
 
 class App
 {
@@ -32,8 +34,12 @@ private:
 	std::unique_ptr<Camera> camera_ = nullptr;
 
 	std::shared_ptr<Shader> terrain_shader_ = nullptr;
+	std::shared_ptr<Shader> skybox_shader_ = nullptr;
+
 	std::unique_ptr<Terrain> terrain_ = nullptr;
+	std::unique_ptr<Skybox> skybox_ = nullptr;
 	std::unique_ptr<Snail> snail_ = nullptr;
+
 
 	GLuint terrain_texture_ = 0;
 

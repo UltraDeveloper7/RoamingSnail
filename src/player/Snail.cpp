@@ -347,7 +347,7 @@ void Snail::UpdateShellSpin(float dt, const glm::vec3& terrainNormal)
 
 void Snail::ClampToTerrainBounds()
 {
-    const float bound = 9.5f;
+    const float bound = 38.0f;
 
     position_.x = glm::clamp(position_.x, -bound, bound);
     position_.z = glm::clamp(position_.z, -bound, bound);

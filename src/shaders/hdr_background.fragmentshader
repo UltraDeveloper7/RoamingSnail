@@ -1,0 +1,35 @@
+#version 330 core
+
+in vec3 vDirection;
+
+out vec4 FragColor;
+
+uniform sampler2D uHDR;
+uniform float uExposure;
+
+const float PI = 3.14159265359;
+
+vec2 SampleSphericalMap(vec3 dir)
+{
+    dir = normalize(dir);
+
+    vec2 uv = vec2(atan(dir.z, dir.x), asin(dir.y));
+    uv *= vec2(0.15915494309, 0.31830988618);
+    uv += 0.5;
+
+    uv.y = 1.0 - uv.y;
+
+    return uv;
+}
+
+void main()
+{
+    vec2 uv = SampleSphericalMap(vDirection);
+
+    vec3 hdrColor = texture(uHDR, uv).rgb;
+
+    vec3 mapped = vec3(1.0) - exp(-hdrColor * uExposure);
+    mapped = pow(mapped, vec3(1.0 / 2.2));
+
+    FragColor = vec4(mapped, 1.0);
+}

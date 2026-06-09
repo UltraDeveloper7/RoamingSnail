@@ -31,7 +31,7 @@ float Terrain::GetProceduralHeight(float x, float z) const
     const float valley = std::exp(-(x * x) * 0.035f) * 1.15f;
     height -= valley;
 
-    return height;
+    return height * 0.65f;
 }
 
 void Terrain::Generate(int resolution, float size)
@@ -59,13 +59,13 @@ void Terrain::Generate(int resolution, float size)
             vertex.position = glm::vec3(worldX, GetProceduralHeight(worldX, worldZ), worldZ);
             vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
 
-            const float uvScale = 0.30f;
+            const float uvScale = 0.18f;
             glm::vec2 uv(worldX * uvScale, worldZ * uvScale);
 
             const int tileX = static_cast<int>(std::floor(worldX));
             const int tileZ = static_cast<int>(std::floor(worldZ));
 
-            vertex.uv = TransformTileUV(uv, tileX, tileZ);
+            vertex.uv = uv;
 
             vertices_.push_back(vertex);
         }

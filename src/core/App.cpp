@@ -21,10 +21,18 @@ App::App() :
 		"terrain.fragmentshader"
 	);
 
+	skybox_shader_ = std::make_shared<Shader>(
+		"hdr_background.vertexshader",
+		"hdr_background.fragmentshader"
+	);
+
 	LoadTerrainTexture();
 
+	skybox_ = std::make_unique<Skybox>();
+	skybox_->Init("assets/hdr/rolling_hills_4k.hdr");
+
 	terrain_ = std::make_unique<Terrain>();
-	terrain_->Generate(100, 20.0f);
+	terrain_->Generate(100, 80.0f);
 
 	snail_ = std::make_unique<Snail>();
 	snail_->Init();
@@ -96,6 +104,15 @@ void App::Render()
 		terrain_shader_->SetMat4(camera_->GetViewMatrix(), "uView");
 		terrain_shader_->SetMat4(camera_->GetProjectionMatrix(), "uProjection");
 
+		terrain_shader_->SetVec3(glm::normalize(glm::vec3(-0.45f, -0.75f, -0.25f)), "uSunDirection");
+		terrain_shader_->SetVec3(glm::vec3(1.9f, 1.65f, 1.25f), "uSunColor");
+		terrain_shader_->SetVec3(glm::vec3(0.34f, 0.38f, 0.40f), "uAmbientColor");
+
+		// Fog color κοντά στο χρώμα του HDR ορίζοντα.
+		terrain_shader_->SetVec3(glm::vec3(0.62f, 0.68f, 0.70f), "uFogColor");
+		terrain_shader_->SetFloat(22.0f, "uFogStart");
+		terrain_shader_->SetFloat(42.0f, "uFogEnd");
+
 		terrain_shader_->SetInt(0, "uTerrainTexture");
 
 		// Αν έχεις SetBool στη Shader class:
@@ -119,6 +136,16 @@ void App::Render()
 	{
 		snail_->Draw(terrain_shader_);
 	}
+
+	if (skybox_ && skybox_shader_ && camera_)
+	{
+		skybox_->Draw(
+			skybox_shader_,
+			camera_->GetViewMatrix(),
+			camera_->GetProjectionMatrix()
+		);
+	}
+
 }
 
 void App::OnResize() const

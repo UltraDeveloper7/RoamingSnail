@@ -7,25 +7,67 @@ in vec2 vTexCoord;
 uniform sampler2D uTerrainTexture;
 uniform bool uUseTexture;
 
+uniform vec3 uSunDirection;
+uniform vec3 uSunColor;
+uniform vec3 uAmbientColor;
+
+uniform vec3 uFogColor;
+uniform float uFogStart;
+uniform float uFogEnd;
+
 out vec4 FragColor;
 
 void main()
 {
     vec3 normal = normalize(vNormal);
 
-    vec3 lightDir = normalize(vec3(-0.3, 1.0, 0.4));
-    float diff = max(dot(normal, lightDir), 0.0);
-
-    vec3 baseColor = vec3(0.22, 0.45, 0.18);
+    vec3 texColor = vec3(0.34, 0.36, 0.20);
 
     if (uUseTexture)
     {
-        baseColor = texture(uTerrainTexture, vTexCoord).rgb;
-        baseColor = pow(baseColor, vec3(2.2));
+        texColor = texture(uTerrainTexture, vTexCoord).rgb;
+
+        // reduce saturation/contrast so it does not look like game-green plastic
+        float gray = dot(texColor, vec3(0.299, 0.587, 0.114));
+        texColor = mix(texColor, vec3(gray), 0.35);
+        texColor = clamp(texColor, vec3(0.10), vec3(0.75));
     }
 
-    vec3 ambient = baseColor * 0.35;
-    vec3 diffuse = baseColor * diff * 0.80;
+    // earthy palette based on height
+    float heightFactor = smoothstep(-1.2, 2.0, vWorldPos.y);
 
-    FragColor = vec4(ambient + diffuse, 1.0);
+    vec3 lowColor  = vec3(0.28, 0.25, 0.13); // dry dirt/olive
+    vec3 midColor  = vec3(0.33, 0.40, 0.20); // muted grass
+    vec3 highColor = vec3(0.52, 0.47, 0.28); // dry hill grass
+
+    vec3 terrainColor = mix(lowColor, midColor, heightFactor);
+    terrainColor = mix(terrainColor, highColor, smoothstep(0.55, 1.0, heightFactor));
+
+    vec3 baseColor = mix(texColor, terrainColor, 0.55);
+
+    // slope tint: steeper parts become more dirt-like
+    float slope = 1.0 - clamp(normal.y, 0.0, 1.0);
+    vec3 dirtColor = vec3(0.30, 0.23, 0.14);
+    baseColor = mix(baseColor, dirtColor, slope * 0.45);
+
+    vec3 lightDir = normalize(-uSunDirection);
+
+    float ndotl = max(dot(normal, lightDir), 0.0);
+
+    // soft diffuse, not harsh black shadows
+    vec3 ambient = baseColor * uAmbientColor;
+    vec3 diffuse = baseColor * uSunColor * (0.25 + 0.75 * ndotl);
+
+    vec3 color = ambient + diffuse;
+
+    // distance fog: blends terrain into HDR background
+    float dist = length(vWorldPos.xz);
+    float fogFactor = smoothstep(uFogStart, uFogEnd, dist);
+    color = mix(color, uFogColor, fogFactor);
+
+    // tone mapping / gamma
+    color = color / (color + vec3(1.0));
+    color = pow(color, vec3(1.0 / 2.2));
+
+    FragColor = vec4(color, 1.0);
 }
