@@ -154,7 +154,7 @@ void Window::createWindow()
         throwGlfwError("Failed to create GLFW window");
     }
 
-    SetWin32WindowIconFromICO(L"assets\\icons\\billiards.ico");
+    SetWin32WindowIconFromICO(L"assets\\icons\\Snail.ico");
 
 
     glfwMakeContextCurrent(handle_);

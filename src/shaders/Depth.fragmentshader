@@ -1,6 +1,21 @@
-#version 440 core
+#version 330 core
+
+in vec2 vDepthTexCoord;
+
+uniform bool uDepthUseAlphaCutout;
+uniform bool material_hasDiffuseMap;
+uniform sampler2D material_diffuseMap;
+
 void main()
 {
-    // Depth value is automatically written to the depth buffer
-    gl_FragDepth = gl_FragCoord.z;
+    if (uDepthUseAlphaCutout && material_hasDiffuseMap)
+    {
+        vec4 diffuseSample = texture(material_diffuseMap, vDepthTexCoord);
+        float maxChannel = max(max(diffuseSample.r, diffuseSample.g), diffuseSample.b);
+
+        if (diffuseSample.a < 0.18 || maxChannel < 0.055)
+        {
+            discard;
+        }
+    }
 }

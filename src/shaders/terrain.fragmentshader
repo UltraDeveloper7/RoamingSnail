@@ -4,6 +4,7 @@ in vec3 vNormal;
 in vec3 vWorldPos;
 in vec2 vTexCoord;
 in vec3 vColor;
+in vec4 vLightSpacePos;
 
 uniform sampler2D uTerrainTexture;
 uniform bool uUseTexture;
@@ -19,7 +20,17 @@ uniform float uFogEnd;
 uniform bool uUseObjectColor;
 uniform vec3 uObjectColor;
 
+uniform vec3 uCameraPos;
+
 uniform bool uUseVertexColor;
+uniform vec3 uColorTint;
+
+uniform sampler2D shadowMap;
+uniform sampler2D uShadowMap;
+uniform bool uEnableShadows;
+uniform float uShadowBiasMin;
+uniform float uShadowBiasMax;
+uniform float uShadowStrength;
 
 struct Material
 {
@@ -47,22 +58,140 @@ uniform bool uUseMaterial;
 
 out vec4 FragColor;
 
+float CalculateShadow(vec4 lightSpacePos, vec3 normal, vec3 lightDir)
+{
+    vec3 projCoords = lightSpacePos.xyz / lightSpacePos.w;
+    projCoords = projCoords * 0.5 + 0.5;
+
+    if (projCoords.z > 1.0)
+    {
+        return 0.0;
+    }
+
+    if (projCoords.x < 0.0 || projCoords.x > 1.0 ||
+        projCoords.y < 0.0 || projCoords.y > 1.0)
+    {
+        return 0.0;
+    }
+
+    float currentDepth = projCoords.z;
+    float ndotl = max(dot(normal, lightDir), 0.0);
+
+    float bias = max(
+        uShadowBiasMax * (1.0 - ndotl),
+        uShadowBiasMin
+    );
+
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+
+    float shadow = 0.0;
+    float weightSum = 0.0;
+
+    for (int x = -2; x <= 2; ++x)
+    {
+        for (int y = -2; y <= 2; ++y)
+        {
+            float dist = length(vec2(x, y));
+            float weight = 1.0 / (1.0 + dist);
+
+            float closestDepth = texture(
+                shadowMap,
+                projCoords.xy + vec2(x, y) * texelSize * 1.35
+            ).r;
+
+            shadow += (currentDepth - bias > closestDepth ? 1.0 : 0.0) * weight;
+            weightSum += weight;
+        }
+    }
+
+    shadow /= max(weightSum, 0.0001);
+
+    // soften and reduce harsh binary transitions
+    shadow = smoothstep(0.15, 0.95, shadow);
+
+    return shadow * uShadowStrength;
+}
+
+vec3 GetTerrainBaseColor(vec3 normal)
+{
+    vec3 texColor = vec3(0.34, 0.36, 0.20);
+
+    if (uUseTexture)
+    {
+        texColor = texture(uTerrainTexture, vTexCoord).rgb;
+
+        float gray = dot(texColor, vec3(0.299, 0.587, 0.114));
+        texColor = mix(texColor, vec3(gray), 0.35);
+        texColor = clamp(texColor, vec3(0.10), vec3(0.75));
+    }
+
+    float heightFactor = smoothstep(-1.2, 2.0, vWorldPos.y);
+
+    vec3 lowColor  = vec3(0.36, 0.31, 0.18);
+    vec3 midColor  = vec3(0.48, 0.43, 0.25);
+    vec3 highColor = vec3(0.62, 0.54, 0.32);
+
+    vec3 terrainColor = mix(lowColor, midColor, heightFactor);
+    terrainColor = mix(terrainColor, highColor, smoothstep(0.55, 1.0, heightFactor));
+
+    vec3 baseColor = mix(texColor, terrainColor, 0.75);
+
+    float slope = 1.0 - clamp(normal.y, 0.0, 1.0);
+    vec3 dirtColor = vec3(0.32, 0.25, 0.14);
+
+    baseColor = mix(baseColor, dirtColor, slope * 0.45);
+
+    return baseColor;
+}
+
 void main()
 {
     vec3 normal = normalize(vNormal);
 
     vec3 baseColor;
+    float roughnessValue = 0.65;
+    float metallicValue = 0.0;
+    float aoValue = 1.0;
 
     if (uUseMaterial)
     {
         baseColor = material.diffuse;
+        roughnessValue = clamp(material.roughness, 0.04, 1.0);
+        metallicValue = clamp(material.metallic, 0.0, 1.0);
 
         if (material.hasDiffuseMap)
         {
-            baseColor = texture(material.diffuseMap, vTexCoord).rgb;
+            vec4 diffuseSample = texture(material.diffuseMap, vTexCoord);
+
+            float blackKey = max(max(diffuseSample.r, diffuseSample.g), diffuseSample.b);
+
+            if (diffuseSample.a < 0.18 || blackKey < 0.055)
+            {
+                discard;
+            }
+
+            baseColor = diffuseSample.rgb;
         }
 
+        if (material.hasRoughnessMap)
+        {
+            roughnessValue = texture(material.roughnessMap, vTexCoord).r;
+            roughnessValue = clamp(roughnessValue, 0.04, 1.0);
+        }
+
+        if (material.hasAoMap)
+        {
+            aoValue = texture(material.aoMap, vTexCoord).r;
+            aoValue = clamp(aoValue, 0.0, 1.0);
+        }
+
+        baseColor *= uColorTint;
+        baseColor *= 1.18;
         baseColor = clamp(baseColor, vec3(0.02), vec3(1.0));
+
+        // Card vegetation and simple OBJ materials look better with softer foliage-like normals.
+        // Snail shell/body still keep object silhouette through geometry, but lighting stays less harsh.
+        normal = normalize(mix(normal, vec3(0.0, 1.0, 0.35), 0.20));
     }
     else if (uUseVertexColor)
     {
@@ -74,49 +203,41 @@ void main()
     }
     else
     {
-        vec3 texColor = vec3(0.34, 0.36, 0.20);
-
-        if (uUseTexture)
-        {
-            texColor = texture(uTerrainTexture, vTexCoord).rgb;
-
-            float gray = dot(texColor, vec3(0.299, 0.587, 0.114));
-            texColor = mix(texColor, vec3(gray), 0.35);
-            texColor = clamp(texColor, vec3(0.10), vec3(0.75));
-        }
-
-        float heightFactor = smoothstep(-1.2, 2.0, vWorldPos.y);
-
-        vec3 lowColor  = vec3(0.28, 0.25, 0.13);
-        vec3 midColor  = vec3(0.33, 0.40, 0.20);
-        vec3 highColor = vec3(0.52, 0.47, 0.28);
-
-        vec3 terrainColor = mix(lowColor, midColor, heightFactor);
-        terrainColor = mix(terrainColor, highColor, smoothstep(0.55, 1.0, heightFactor));
-
-        baseColor = mix(texColor, terrainColor, 0.55);
-
-        float slope = 1.0 - clamp(normal.y, 0.0, 1.0);
-        vec3 dirtColor = vec3(0.30, 0.23, 0.14);
-        baseColor = mix(baseColor, dirtColor, slope * 0.45);
+        baseColor = GetTerrainBaseColor(normal);
     }
 
     vec3 lightDir = normalize(-uSunDirection);
+    vec3 viewDir = normalize(uCameraPos - vWorldPos);
+    vec3 halfDir = normalize(lightDir + viewDir);
+
     float ndotl = max(dot(normal, lightDir), 0.0);
+    float specPower = mix(96.0, 12.0, roughnessValue);
+    float spec = pow(max(dot(normal, halfDir), 0.0), specPower);
 
-    float roughnessValue = uUseMaterial ? material.roughness : 0.65;
-    vec3 halfDir = normalize(lightDir + normalize(-vWorldPos));
-    float spec = pow(max(dot(normal, halfDir), 0.0), mix(96.0, 12.0, roughnessValue));
+    float shadow = 0.0;
 
-    vec3 ambient = baseColor * uAmbientColor;
-    vec3 diffuse = baseColor * uSunColor * (0.25 + 0.75 * ndotl);
-    vec3 specular = uSunColor * spec * 0.08 * (1.0 - roughnessValue);
+    if (uEnableShadows)
+    {
+        shadow = CalculateShadow(vLightSpacePos, normal, lightDir);
+    }
+
+    vec3 ambient = baseColor * uAmbientColor * aoValue;
+
+    vec3 diffuse = baseColor * uSunColor * (0.20 + 0.80 * ndotl * (1.0 - shadow));
+
+    vec3 specular = uSunColor
+        * spec
+        * 0.06
+        * (1.0 - roughnessValue)
+        * (1.0 - metallicValue)
+        * (1.0 - shadow);
 
     vec3 color = ambient + diffuse + specular;
 
-    if (!uUseObjectColor && !uUseVertexColor && !uUseMaterial)
+    // Apply fog to terrain, vegetation and snail, but not debug solid overlays if needed.
+    if (!uUseObjectColor && !uUseVertexColor)
     {
-        float dist = length(vWorldPos.xz);
+        float dist = length(vWorldPos - uCameraPos);
         float fogFactor = smoothstep(uFogStart, uFogEnd, dist);
         color = mix(color, uFogColor, fogFactor);
     }

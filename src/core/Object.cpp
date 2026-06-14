@@ -51,6 +51,66 @@ void Object::DrawWithModelMatrix(const std::shared_ptr<Shader>& shader, const gl
 	shader->Unbind();
 }
 
+void Object::DrawDepthWithModelMatrix(
+	const std::shared_ptr<Shader>& shader,
+	const glm::mat4& modelMatrix
+)
+{
+	shader->Bind();
+
+	shader->SetMat4(modelMatrix, "modelMatrix");
+	shader->SetMat4(modelMatrix, "uModel");
+
+	for (const auto& mesh : meshes_)
+	{
+		mesh->Bind();
+		mesh->Draw();
+		mesh->Unbind();
+	}
+
+	shader->Unbind();
+}
+
+void Object::DrawAlphaDepthWithModelMatrix(
+	const std::shared_ptr<Shader>& shader,
+	const glm::mat4& modelMatrix
+)
+{
+	shader->Bind();
+
+	shader->SetMat4(modelMatrix, "modelMatrix");
+	shader->SetMat4(modelMatrix, "uModel");
+
+	for (const auto& mesh : meshes_)
+	{
+		const auto material = materials_[mesh->GetMaterialId()];
+
+		shader->SetBool(false, "uDepthUseAlphaCutout");
+		shader->SetBool(false, "material_hasDiffuseMap");
+
+		if (material && material->diffuse_texture)
+		{
+			glActiveTexture(GL_TEXTURE4);
+			material->diffuse_texture->Bind();
+
+			shader->SetBool(true, "uDepthUseAlphaCutout");
+			shader->SetBool(true, "material_hasDiffuseMap");
+			shader->SetInt(4, "material_diffuseMap");
+		}
+
+		mesh->Bind();
+		mesh->Draw();
+		mesh->Unbind();
+	}
+
+	shader->SetBool(false, "uDepthUseAlphaCutout");
+	shader->SetBool(false, "material_hasDiffuseMap");
+
+	glActiveTexture(GL_TEXTURE0);
+
+	shader->Unbind();
+}
+
 void Object::Translate(const glm::vec3& translation)
 {
 	translation_ += translation;

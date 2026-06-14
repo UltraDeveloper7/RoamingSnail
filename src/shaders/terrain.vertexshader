@@ -1,24 +1,36 @@
 #version 330 core
 
-layout (location = 0) in vec3 aPosition;
-layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 aTexCoord;
+layout (location = 0) in vec3 vertex_position;
+layout (location = 1) in vec3 vertex_normal;
+layout (location = 2) in vec2 vertex_uv;
 
 uniform mat4 uModel;
+uniform mat4 modelMatrix;
+
 uniform mat4 uView;
 uniform mat4 uProjection;
+
+uniform mat4 lightSpaceMatrix;
+uniform mat4 uLightSpaceMatrix;
 
 out vec3 vNormal;
 out vec3 vWorldPos;
 out vec2 vTexCoord;
+out vec3 vColor;
+out vec4 vLightSpacePos;
 
 void main()
 {
-    vec4 worldPos = uModel * vec4(aPosition, 1.0);
+    mat4 model = uModel;
+
+    vec4 worldPos = model * vec4(vertex_position, 1.0);
 
     vWorldPos = worldPos.xyz;
-    vNormal = mat3(transpose(inverse(uModel))) * aNormal;
-    vTexCoord = aTexCoord;
+    vNormal = normalize(mat3(transpose(inverse(model))) * vertex_normal);
+    vTexCoord = vertex_uv;
+    vColor = vec3(1.0);
+
+    vLightSpacePos = lightSpaceMatrix * worldPos;
 
     gl_Position = uProjection * uView * worldPos;
 }

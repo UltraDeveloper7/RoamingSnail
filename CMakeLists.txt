@@ -14,54 +14,18 @@ if(MSVC)
 endif()
 
 # --- Sources
-#file(GLOB_RECURSE ROAMING_SNAIL_SRC CONFIGURE_DEPENDS
-#  "${CMAKE_SOURCE_DIR}/src/*.cpp"
-#  "${CMAKE_SOURCE_DIR}/src/*.c"
-#  "${CMAKE_SOURCE_DIR}/src/*.h"
-#  "${CMAKE_SOURCE_DIR}/src/*.hpp"
-#)
-
 file(GLOB_RECURSE ROAMING_SNAIL_SRC CONFIGURE_DEPENDS
-  "${CMAKE_SOURCE_DIR}/src/main.cpp"
-  "${CMAKE_SOURCE_DIR}/src/precompiled.cpp"
-  "${CMAKE_SOURCE_DIR}/src/precompiled.h"
-
-  "${CMAKE_SOURCE_DIR}/src/core/App.cpp"
-  "${CMAKE_SOURCE_DIR}/src/core/App.hpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Shader.cpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Shader.hpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Texture.cpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Texture.hpp"
-
-  "${CMAKE_SOURCE_DIR}/src/interface/Window.cpp"
-  "${CMAKE_SOURCE_DIR}/src/interface/Window.hpp"
-  "${CMAKE_SOURCE_DIR}/src/interface/Camera.cpp"
-  "${CMAKE_SOURCE_DIR}/src/interface/Camera.hpp"
-  "${CMAKE_SOURCE_DIR}/src/world/Terrain.cpp"
-  "${CMAKE_SOURCE_DIR}/src/world/Terrain.hpp"
-  "${CMAKE_SOURCE_DIR}/src/player/Snail.cpp"
-  "${CMAKE_SOURCE_DIR}/src/player/Snail.hpp"
-  "${CMAKE_SOURCE_DIR}/src/world/Skybox.cpp"
-  "${CMAKE_SOURCE_DIR}/src/world/Skybox.hpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Loader.cpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Loader.hpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Object.cpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Object.hpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Mesh.cpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Mesh.hpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Material.cpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Material.hpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Texture.cpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Texture.hpp"
-  "${CMAKE_SOURCE_DIR}/src/core/Vertex.hpp"
-
+  "${CMAKE_SOURCE_DIR}/src/*.cpp"
+  "${CMAKE_SOURCE_DIR}/src/*.c"
+  "${CMAKE_SOURCE_DIR}/src/*.h"
+  "${CMAKE_SOURCE_DIR}/src/*.hpp"
 )
 
 if(WIN32 AND EXISTS "${CMAKE_SOURCE_DIR}/appicon.rc")
   list(APPEND ROAMING_SNAIL_SRC "${CMAKE_SOURCE_DIR}/appicon.rc")
 endif()
 
-add_executable(RoamingSnail ${ROAMING_SNAIL_SRC} "src/world/Terrain.cpp" "src/player/Snail.cpp" "src/world/Skybox.cpp")
+add_executable(RoamingSnail ${ROAMING_SNAIL_SRC} "src/world/Terrain.cpp" "src/player/Snail.cpp"  "src/world/Vegetation.cpp" "src/rendering/SceneLighting.cpp")
 source_group(TREE "${CMAKE_SOURCE_DIR}" FILES ${ROAMING_SNAIL_SRC})
 
 # --- Target properties

@@ -39,11 +39,11 @@ void Snail::Init()
     CreateBoxMesh();
     try
     {
-        std::cout << "Loading slug model: snail/slug_body.obj" << std::endl;
-        std::cout << "Loading shell model: shell/shell.obj" << std::endl;
+        std::cout << "Loading slug model: " << Config::slug_model_path << std::endl;
+        std::cout << "Loading shell model: " << Config::shell_model_path << std::endl;
 
-        slug_object_ = std::make_unique<Object>("snail/slug_body.obj");
-        shell_object_ = std::make_unique<Object>("shell/shell.obj");
+        slug_object_ = std::make_unique<Object>(Config::slug_model_path);
+        shell_object_ = std::make_unique<Object>(Config::shell_model_path);
     }
     catch (const std::exception& e)
     {
@@ -157,6 +157,17 @@ void Snail::Update(float dt, GLFWwindow* window, const Terrain& terrain)
     HandleInput(dt, window);
     UpdateRetractAnimation(dt);
 
+    if (speed_boost_timer_ > 0.0f)
+    {
+        speed_boost_timer_ -= dt;
+
+        if (speed_boost_timer_ <= 0.0f)
+        {
+            speed_boost_timer_ = 0.0f;
+            speed_boost_multiplier_ = 1.0f;
+        }
+    }
+
     if (mode_ == Mode::Shell)
     {
         UpdateShellPhysics(dt, window, terrain);
@@ -171,7 +182,7 @@ void Snail::Update(float dt, GLFWwindow* window, const Terrain& terrain)
     const float terrain_height = terrain.GetHeightAt(position_.x, position_.z);
 
     const float shellHeightOffset = shell_radius_;
-    const float bodyHeightOffset = 0.20f;
+    const float bodyHeightOffset = Config::snail_body_height_offset;
     const float targetOffset = IsShellOnly() ? shellHeightOffset : bodyHeightOffset;
 
     position_.y = terrain_height + targetOffset;
@@ -214,12 +225,12 @@ void Snail::UpdateNormalMovement(float dt, GLFWwindow* window)
         return;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
         yaw_ += turn_speed_ * dt;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
         yaw_ -= turn_speed_ * dt;
     }
@@ -228,12 +239,12 @@ void Snail::UpdateNormalMovement(float dt, GLFWwindow* window)
 
     glm::vec3 move_dir{ 0.0f };
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
         move_dir += forward_;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
         move_dir -= forward_;
     }
@@ -243,7 +254,8 @@ void Snail::UpdateNormalMovement(float dt, GLFWwindow* window)
     if (is_moving_)
     {
         move_dir = glm::normalize(move_dir);
-        position_ += move_dir * move_speed_ * dt;
+        const float currentSpeed = move_speed_ * speed_boost_multiplier_;
+        position_ += move_dir * currentSpeed * dt;
 
         if (mode_ == Mode::Normal)
         {
@@ -260,12 +272,12 @@ void Snail::UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terr
 {
     const glm::vec3 terrainNormal = terrain.GetNormalAt(position_.x, position_.z);
 
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
     {
         yaw_ += shell_turn_strength_ * dt;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
     {
         yaw_ -= shell_turn_strength_ * dt;
     }
@@ -274,12 +286,12 @@ void Snail::UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terr
 
     glm::vec3 controlForce{ 0.0f };
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
     {
         controlForce += forward_ * shell_acceleration_;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
     {
         controlForce -= forward_ * shell_acceleration_ * 0.65f;
     }
@@ -317,7 +329,7 @@ void Snail::UpdateShellPhysics(float dt, GLFWwindow* window, const Terrain& terr
     const float frictionFactor = std::pow(surfaceFriction, dt * 60.0f);
     shell_velocity_ *= frictionFactor;
 
-    if (glm::length(shell_velocity_) < 0.015f)
+    if (glm::length(shell_velocity_) < Config::shell_stop_speed)
     {
         shell_velocity_ = glm::vec3(0.0f);
     }
@@ -361,7 +373,7 @@ void Snail::UpdateShellSpin(float dt, const glm::vec3& terrainNormal)
 
 void Snail::ClampToTerrainBounds()
 {
-    const float bound = 38.0f;
+    const float bound = Config::snail_world_bound;
 
     position_.x = glm::clamp(position_.x, -bound, bound);
     position_.z = glm::clamp(position_.z, -bound, bound);
@@ -391,10 +403,10 @@ float Snail::GetSurfaceFriction(const Terrain& terrain) const
 
     // Flat ground: more friction.
     // Steeper slopes: less friction, so the shell rolls longer.
-    const float t = glm::clamp(slopeAngle / glm::radians(45.0f), 0.0f, 1.0f);
+    const float t = glm::clamp(slopeAngle / Config::shell_max_climb_slope, 0.0f, 1.0f);
 
-    const float flatFriction = 0.982f;
-    const float slopeFriction = 0.994f;
+    const float flatFriction = Config::shell_flat_friction;
+    const float slopeFriction = Config::shell_slope_friction;
 
     return glm::mix(flatFriction, slopeFriction, t);
 }
@@ -510,17 +522,17 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
         if (IsBodyVisible())
         {
             const glm::vec3 bodyOffset = glm::mix(
-                glm::vec3(0.0f, 0.05f, 0.0f),
-                glm::vec3(0.0f, 0.22f, 0.25f),
+                Config::slug_body_normal_offset,
+                Config::slug_body_retracted_offset,
                 retract_progress_
             );
 
             const float retractScale = glm::max(0.08f, bodyVisibility);
 
             const glm::vec3 bodyScale = glm::vec3(
-                0.75f,
-                0.75f * retractScale,
-                0.75f * retractScale
+                Config::slug_body_draw_scale,
+                Config::slug_body_draw_scale * retractScale,
+                Config::slug_body_draw_scale * retractScale
             );
 
             glm::mat4 bodyModel = BuildModelMatrix(bodyOffset, bodyScale);
@@ -529,11 +541,11 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
         }
 
         {
-            const float shellPulse = 1.0f + 0.10f * retract_progress_;
+            const float shellPulse = 1.0f + Config::shell_retract_pulse * retract_progress_;
 
             glm::mat4 shellModel = BuildModelMatrix(
-                glm::vec3(0.0f, 0.34f, 0.25f),
-                glm::vec3(0.75f) * shellPulse
+                Config::shell_draw_offset,
+                glm::vec3(Config::shell_draw_scale) * shellPulse
             );
 
             if (mode_ == Mode::Shell)
@@ -654,4 +666,117 @@ void Snail::Draw(const std::shared_ptr<Shader>& shader) const
     shader->Unbind();
 
     glBindVertexArray(0);
+}
+
+void Snail::DrawDepth(const std::shared_ptr<Shader>& shader) const
+{
+    if (slug_object_ && shell_object_)
+    {
+        const float bodyVisibility = 1.0f - retract_progress_;
+
+        if (IsBodyVisible())
+        {
+            const glm::vec3 bodyOffset = glm::mix(
+                Config::slug_body_normal_offset,
+                Config::slug_body_retracted_offset,
+                retract_progress_
+            );
+
+            const float retractScale = glm::max(0.08f, bodyVisibility);
+
+            const glm::vec3 bodyScale = glm::vec3(
+                Config::slug_body_draw_scale,
+                Config::slug_body_draw_scale * retractScale,
+                Config::slug_body_draw_scale * retractScale
+            );
+
+            const glm::mat4 bodyModel = BuildModelMatrix(bodyOffset, bodyScale);
+
+            slug_object_->DrawDepthWithModelMatrix(shader, bodyModel);
+        }
+
+        const float shellPulse = 1.0f + Config::shell_retract_pulse * retract_progress_;
+
+        glm::mat4 shellModel = BuildModelMatrix(
+            Config::shell_draw_offset,
+            glm::vec3(Config::shell_draw_scale) * shellPulse
+        );
+
+        if (mode_ == Mode::Shell)
+        {
+            shellModel *= glm::mat4_cast(shell_rotation_);
+        }
+
+        shell_object_->DrawDepthWithModelMatrix(shader, shellModel);
+
+        return;
+    }
+
+    if (vao_ == 0)
+    {
+        return;
+    }
+
+    glBindVertexArray(vao_);
+
+    const float bodyVisibility = 1.0f - retract_progress_;
+
+    if (IsBodyVisible())
+    {
+        const glm::vec3 bodyOffset = glm::mix(
+            glm::vec3(0.0f, 0.05f, 0.0f),
+            glm::vec3(0.0f, 0.22f, 0.25f),
+            retract_progress_
+        );
+
+        const glm::vec3 bodyScale =
+            glm::vec3(0.38f, 0.18f, 0.80f) *
+            glm::vec3(1.0f, bodyVisibility, bodyVisibility);
+
+        const glm::mat4 bodyModel = BuildModelMatrix(bodyOffset, bodyScale);
+
+        shader->Bind();
+        shader->SetBool(false, "uDepthUseAlphaCutout");
+        shader->SetBool(false, "material_hasDiffuseMap");
+        shader->SetMat4(bodyModel, "modelMatrix");
+        shader->SetMat4(bodyModel, "uModel");
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
+        shader->Unbind();
+    }
+
+    {
+        const float shellPulse = 1.0f + 0.10f * retract_progress_;
+
+        glm::mat4 shellModel = BuildModelMatrix(
+            glm::vec3(0.0f, 0.34f, 0.25f),
+            glm::vec3(0.42f, 0.42f, 0.42f) * shellPulse
+        );
+
+        if (mode_ == Mode::Shell)
+        {
+            shellModel *= glm::mat4_cast(shell_rotation_);
+        }
+
+        shader->Bind();
+        shader->SetBool(false, "uDepthUseAlphaCutout");
+        shader->SetBool(false, "material_hasDiffuseMap");
+        shader->SetMat4(shellModel, "modelMatrix");
+        shader->SetMat4(shellModel, "uModel");
+        glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices_.size()), GL_UNSIGNED_INT, nullptr);
+        shader->Unbind();
+    }
+
+    glBindVertexArray(0);
+}
+
+void Snail::ApplySpeedBoost(float duration, float multiplier)
+{
+    speed_boost_timer_ = glm::max(speed_boost_timer_, duration);
+    speed_boost_multiplier_ = glm::max(speed_boost_multiplier_, multiplier);
+}
+
+void Snail::SlowShell(float multiplier)
+{
+    shell_velocity_ *= glm::clamp(multiplier, 0.0f, 1.0f);
+    shell_angular_velocity_ *= glm::clamp(multiplier, 0.0f, 1.0f);
 }

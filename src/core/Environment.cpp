@@ -12,9 +12,6 @@ prefilter_shader_(std::make_unique<Shader>(Config::cubemap_vertex_path, Config::
     CreateQuad();
     CreateBuffers();
 
-    // Create multiple shadow maps
-    CreateShadowMapsForAllLights();
-
     const glm::mat4 capture_projection = glm::perspective(glm::half_pi<float>(), 1.0f, Config::near_clip, Config::far_clip);
     const glm::mat4 capture_views[] =
     {
@@ -67,21 +64,38 @@ void Environment::Prepare() const
 
 void Environment::Draw(const std::shared_ptr<Shader>& background_shader) const
 {
-    // Skybox should pass when depth == 1.0
-    GLint oldDepthFunc; glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
-	glDepthFunc(GL_LEQUAL); // skybox depth trick
+    if (!cube_map_)
+    {
+        return;
+    }
+
+    GLint oldDepthFunc = GL_LESS;
+    GLboolean oldDepthMask = GL_TRUE;
+    GLint oldActiveTexture = GL_TEXTURE0;
+
+    glGetIntegerv(GL_DEPTH_FUNC, &oldDepthFunc);
+    glGetBooleanv(GL_DEPTH_WRITEMASK, &oldDepthMask);
+    glGetIntegerv(GL_ACTIVE_TEXTURE, &oldActiveTexture);
+
+    glDepthFunc(GL_LEQUAL);
+    glDepthMask(GL_FALSE);
 
     background_shader->Bind();
-    glActiveTexture(GL_TEXTURE1);
-    cube_map_->Bind();
-    background_shader->SetInt(1, "environmentMap");
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, cube_map_->GetId());
+    background_shader->SetInt(0, "environmentMap");
 
     cube_->Bind();
     cube_->Draw();
     cube_->Unbind();
+
     background_shader->Unbind();
 
-    // Restore normal depth test for the rest of the frame
+    glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+    glActiveTexture(oldActiveTexture);
+
+    glDepthMask(oldDepthMask);
     glDepthFunc(oldDepthFunc);
 }
 
@@ -95,43 +109,6 @@ void Environment::CreateBuffers()
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT24, Config::cube_map_size, Config::cube_map_size);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, rbo_);
 }
-
-void Environment::CreateShadowMapsForAllLights()
-{
-    glGenFramebuffers(Config::max_shader_lights, depthMapFBO);
-    glGenTextures(Config::max_shader_lights, depthMap);
-
-    // For each possible light we might have a shadow map
-    for (int i = 0; i < Config::max_shader_lights; i++)
-    {
-        glBindTexture(GL_TEXTURE_2D, depthMap[i]);
-        glTexImage2D(
-            GL_TEXTURE_2D,
-            0,
-            GL_DEPTH_COMPONENT24,
-            Config::shadow_width,
-            Config::shadow_height,
-            0,
-            GL_DEPTH_COMPONENT,
-            GL_FLOAT,
-            nullptr
-        );
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
-        float borderColor[] = { 1.0f, 1.0f, 1.0f, 1.0f };
-        glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, borderColor);
-
-        glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO[i]);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap[i], 0);
-        glDrawBuffer(GL_NONE);
-        glReadBuffer(GL_NONE);
-    }
-    // unbind for safety
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-}
-
 
 void Environment::CreateCube()
 {

@@ -121,6 +121,10 @@ bool TextRenderer::EnsureGlyph(uint32_t cp) {
 }
 
 void TextRenderer::Render(std::vector<Text>& texts) {
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glDisable(GL_DEPTH_TEST);
+
 	text_shader_->Bind();
 	glActiveTexture(GL_TEXTURE0);
 	glBindVertexArray(vao_);
@@ -168,6 +172,8 @@ void TextRenderer::Render(std::vector<Text>& texts) {
 	texts.clear();
 	glBindVertexArray(0);
 	glBindTexture(GL_TEXTURE_2D, 0);
+
+	glEnable(GL_DEPTH_TEST);
 }
 
 

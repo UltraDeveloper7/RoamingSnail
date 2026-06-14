@@ -78,6 +78,13 @@ std::shared_ptr<Texture> Loader::LoadTexture(const std::string& path)
 	}
 
 	unsigned char* image_data = stbi_load(image_path.string().c_str(), &width, &height, &channels, 0);
+	
+	std::cout
+		<< "Loaded texture: " << image_path.string()
+		<< " | channels=" << channels
+		<< " | size=" << width << "x" << height
+		<< std::endl;
+
 	if (!image_data)
 	{
 		std::cerr << "stbi_load failed for image: "

@@ -1,0 +1,8 @@
+newmtl dry_grass_texture
+Ka 0.20 0.18 0.08
+Kd 0.92 0.82 0.36
+Ks 0.00 0.00 0.00
+Ns 2.0
+d 1.0
+illum 1
+map_Kd vegetation/dry_grass_clump_diffuse.png

@@ -17,8 +17,14 @@ public:
     void Init();
     void Update(float dt, GLFWwindow* window, const Terrain& terrain);
     void Draw(const std::shared_ptr<Shader>& shader) const;
+    void DrawDepth(const std::shared_ptr<Shader>& shader) const;
 
     glm::vec3 GetPosition() const { return position_; }
+
+    bool IsShellMode() const { return mode_ == Mode::Shell; }
+
+    void ApplySpeedBoost(float duration, float multiplier);
+    void SlowShell(float multiplier);
 
 private:
     enum class Mode
@@ -59,8 +65,8 @@ private:
     glm::vec3 up_{ 0.0f, 1.0f, 0.0f };
     glm::vec3 right_{ 1.0f, 0.0f, 0.0f };
 
-    float move_speed_ = 2.0f;
-    float turn_speed_ = 2.5f;
+    float move_speed_ = Config::snail_move_speed;
+    float turn_speed_ = Config::snail_turn_speed;
     float yaw_ = 0.0f;
 
     float animation_time_ = 0.0f;
@@ -70,19 +76,18 @@ private:
     Mode mode_ = Mode::Normal;
 
     float retract_progress_ = 0.0f;
-    float retract_speed_ = 2.25f;
+    float retract_speed_ = Config::retract_speed;
     bool r_was_pressed_ = false;
 
     glm::vec3 shell_velocity_{ 0.0f };
     glm::vec3 shell_angular_velocity_{ 0.0f };
 
-    float shell_radius_ = 0.42f;
-    float shell_acceleration_ = 7.0f;
-    float shell_max_speed_ = 8.0f;
-    float shell_friction_ = 0.985f;
-    float shell_slope_strength_ = 8.5f;
-    float shell_turn_strength_ = 2.6f;
-    float max_shell_climb_slope_ = glm::radians(32.0f);
+    float shell_radius_ = Config::snail_shell_radius;
+    float shell_acceleration_ = Config::shell_acceleration;
+    float shell_max_speed_ = Config::shell_max_speed;
+    float shell_turn_strength_ = Config::shell_turn_strength;
+    float shell_slope_strength_ = Config::shell_slope_strength;
+    float max_shell_climb_slope_ = Config::shell_max_climb_slope;
 
     glm::quat shell_rotation_{ 1.0f, 0.0f, 0.0f, 0.0f };
 
@@ -94,4 +99,7 @@ private:
     std::vector<unsigned int> indices_;
 
     glm::mat4 orientation_{ 1.0f };
+
+    float speed_boost_timer_ = 0.0f;
+    float speed_boost_multiplier_ = 1.0f;
 };

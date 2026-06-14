@@ -20,36 +20,46 @@ void Material::Bind(const std::shared_ptr<Shader>& shader) const
 	if (diffuse_texture)
 	{
 		glActiveTexture(GL_TEXTURE4);
-		shader->SetBool(true, "material.hasDiffuseMap");
 		diffuse_texture->Bind();
+
+		shader->SetBool(true, "material.hasDiffuseMap");
+		shader->SetInt(4, "material.diffuseMap");
 	}
 
 	if (roughness_texture)
 	{
 		glActiveTexture(GL_TEXTURE5);
-		shader->SetBool(true, "material.hasRoughnessMap");
 		roughness_texture->Bind();
+
+		shader->SetBool(true, "material.hasRoughnessMap");
+		shader->SetInt(5, "material.roughnessMap");
 	}
 
 	if (normal_texture)
 	{
 		glActiveTexture(GL_TEXTURE6);
-		shader->SetBool(true, "material.hasNormalMap");
 		normal_texture->Bind();
+
+		shader->SetBool(true, "material.hasNormalMap");
+		shader->SetInt(6, "material.normalMap");
 	}
 
 	if (ao_texture)
 	{
 		glActiveTexture(GL_TEXTURE7);
-		shader->SetBool(true, "material.hasAoMap");
 		ao_texture->Bind();
+
+		shader->SetBool(true, "material.hasAoMap");
+		shader->SetInt(7, "material.aoMap");
 	}
 
 	if (metallic_texture)
 	{
 		glActiveTexture(GL_TEXTURE8);
-		shader->SetBool(true, "material.hasMetallicMap");
 		metallic_texture->Bind();
+
+		shader->SetBool(true, "material.hasMetallicMap");
+		shader->SetInt(8, "material.metallicMap");
 	}
 
 	// Safety: leave active unit at 0 (not required but avoids surprises)

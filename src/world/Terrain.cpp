@@ -23,15 +23,36 @@ float Terrain::GetProceduralHeight(float x, float z) const
 {
     float height = 0.0f;
 
-    height += std::sin(x * 0.35f) * 0.65f;
-    height += std::cos(z * 0.28f) * 0.55f;
-    height += std::sin((x + z) * 0.18f) * 0.75f;
-    height += std::cos((x - z) * 0.11f) * 0.90f;
+    // Large rolling hills
+    height += std::sin(x * 0.16f) * 1.10f;
+    height += std::cos(z * 0.14f) * 0.95f;
+    height += std::sin((x + z) * 0.09f) * 1.25f;
+    height += std::cos((x - z) * 0.075f) * 1.15f;
 
-    const float valley = std::exp(-(x * x) * 0.035f) * 1.15f;
+    // Medium detail
+    height += std::sin(x * 0.42f + z * 0.18f) * 0.32f;
+    height += std::cos(z * 0.36f - x * 0.10f) * 0.28f;
+
+    // Central shallow valley path
+    const float valleyWidth = 0.018f;
+    const float valley = std::exp(-(x * x) * valleyWidth) * 1.35f;
     height -= valley;
 
-    return height * 0.65f;
+    // Small ridge variation, subtle
+    const float ridge = std::sin((x * 0.20f) + std::cos(z * 0.12f) * 2.0f) * 0.22f;
+    height += ridge;
+
+    return height * Config::terrain_height_scale + Config::terrain_vertical_offset;
+}
+
+void Terrain::SetTexture(GLuint textureId)
+{
+    texture_id_ = textureId;
+}
+
+void Terrain::SetModelMatrix(const glm::mat4& model)
+{
+    model_ = model;
 }
 
 void Terrain::Generate(int resolution, float size)
@@ -59,7 +80,7 @@ void Terrain::Generate(int resolution, float size)
             vertex.position = glm::vec3(worldX, GetProceduralHeight(worldX, worldZ), worldZ);
             vertex.normal = glm::vec3(0.0f, 1.0f, 0.0f);
 
-            const float uvScale = 0.18f;
+            const float uvScale = Config::terrain_uv_scale;
             glm::vec2 uv(worldX * uvScale, worldZ * uvScale);
 
             const int tileX = static_cast<int>(std::floor(worldX));
@@ -261,15 +282,66 @@ void Terrain::Draw(const std::shared_ptr<Shader>& shader) const
     }
 
     shader->Bind();
+
     shader->SetMat4(model_, "uModel");
+    shader->SetMat4(model_, "modelMatrix");
+
+    shader->SetVec3(glm::vec3(1.0f), "uColorTint");
+
+    shader->SetBool(texture_id_ != 0, "uUseTexture");
+    shader->SetBool(false, "uUseObjectColor");
+    shader->SetBool(false, "uUseVertexColor");
+    shader->SetBool(false, "uUseMaterial");
+
+    if (texture_id_ != 0)
+    {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture_id_);
+        shader->SetInt(0, "uTerrainTexture");
+    }
 
     glBindVertexArray(vao_);
+
     glDrawElements(
         GL_TRIANGLES,
         static_cast<GLsizei>(indices_.size()),
         GL_UNSIGNED_INT,
         nullptr
     );
+
+    glBindVertexArray(0);
+
+    if (texture_id_ != 0)
+    {
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    shader->SetBool(false, "uUseTexture");
+
+    shader->Unbind();
+}
+
+void Terrain::DrawDepth(const std::shared_ptr<Shader>& shader) const
+{
+    if (vao_ == 0 || indices_.empty())
+    {
+        return;
+    }
+
+    shader->Bind();
+
+    shader->SetMat4(model_, "modelMatrix");
+    shader->SetMat4(model_, "uModel");
+
+    glBindVertexArray(vao_);
+
+    glDrawElements(
+        GL_TRIANGLES,
+        static_cast<GLsizei>(indices_.size()),
+        GL_UNSIGNED_INT,
+        nullptr
+    );
+
     glBindVertexArray(0);
 
     shader->Unbind();

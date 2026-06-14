@@ -1,10 +1,15 @@
-#version 440 core
-layout(location = 0) in vec3 aPos;
+#version 330 core
 
-uniform mat4 lightSpaceMatrix;
+layout (location = 0) in vec3 vertex_position;
+layout (location = 2) in vec2 vertex_uv;
+
 uniform mat4 modelMatrix;
+uniform mat4 lightSpaceMatrix;
+
+out vec2 vDepthTexCoord;
 
 void main()
 {
-    gl_Position = lightSpaceMatrix * modelMatrix * vec4(aPos, 1.0);
+    vDepthTexCoord = vertex_uv;
+    gl_Position = lightSpaceMatrix * modelMatrix * vec4(vertex_position, 1.0);
 }

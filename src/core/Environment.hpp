@@ -12,13 +12,8 @@ public:
 	void Prepare() const;
 	void Draw(const std::shared_ptr<Shader>& background_shader) const;
 
-	// For multiple shadow maps:
-	unsigned depthMapFBO[Config::max_shader_lights];
-	unsigned depthMap[Config::max_shader_lights];
-
 private:
 	void CreateBuffers();
-	void CreateShadowMapsForAllLights();
 	void CreateCube();
 	void CreateQuad();
 

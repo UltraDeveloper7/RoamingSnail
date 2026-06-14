@@ -1,27 +1,37 @@
 #include "../precompiled.h"
 #include "Camera.hpp"
 
-namespace
-{
-	glm::vec3 DirectionFromAngles(float yaw, float pitch)
-	{
-		const float cp = cosf(pitch);
-		const float sp = sinf(pitch);
-		const float cy = cosf(yaw);
-		const float sy = sinf(yaw);
-
-		return glm::normalize(glm::vec3(cy * cp, sp, sy * cp));
-	}
-}
-
 void Camera::Init()
 {
 	UpdateProjectionMatrix(Config::width, Config::height);
 
-	const glm::vec3 dir = DirectionFromAngles(yaw_, pitch_);
+	position_ = Config::camera_start_position;
+
+	const glm::vec3 startDirection = Config::camera_start_target - Config::camera_start_position;
+	SetAnglesFromDirection(startDirection);
+
+	GLFWwindow* window = glfwGetCurrentContext();
+
+	if (window)
+	{
+		glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+		cursor_locked_ = true;
+	}
+
+	const glm::vec3 dir = DirectionFromAngles();
 	view_matrix_ = glm::lookAt(position_, position_ + dir, glm::vec3(0.0f, 1.0f, 0.0f));
 
 	cursor_initialized_ = false;
+}
+
+glm::vec3 Camera::DirectionFromAngles() const
+{
+	const float cp = cosf(pitch_);
+	const float sp = sinf(pitch_);
+	const float cy = cosf(yaw_);
+	const float sy = sinf(yaw_);
+
+	return glm::normalize(glm::vec3(cy * cp, sp, sy * cp));
 }
 
 void Camera::Update(float frame_time)
@@ -33,19 +43,36 @@ void Camera::Update(float frame_time)
 		return;
 	}
 
-	const glm::vec3 dir = DirectionFromAngles(yaw_, pitch_);
+	const bool l_is_pressed = glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS;
 
-	if (glfwGetInputMode(window, GLFW_CURSOR) == GLFW_CURSOR_DISABLED)
+	if (l_is_pressed && !l_was_pressed_)
 	{
-		Move(window, dir, Config::movement_speed * frame_time);
-		Rotate(window, Config::rotation_speed * frame_time);
+		cursor_locked_ = !cursor_locked_;
+
+		glfwSetInputMode(
+			window,
+			GLFW_CURSOR,
+			cursor_locked_ ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL
+		);
+
+		cursor_initialized_ = false;
+	}
+
+	l_was_pressed_ = l_is_pressed;
+
+	const glm::vec3 dir = DirectionFromAngles();
+
+	if (cursor_locked_)
+	{
+		Move(window, dir, Config::camera_movement_speed * frame_time);
+		Rotate(window, Config::camera_rotation_speed);
 	}
 	else
 	{
 		cursor_initialized_ = false;
 	}
 
-	view_matrix_ = glm::lookAt(position_, position_ + dir, glm::vec3(0.0f, 1.0f, 0.0f));
+	view_matrix_ = glm::lookAt(position_, position_ + DirectionFromAngles(), glm::vec3(0.0f, 1.0f, 0.0f));
 }
 
 void Camera::UpdateProjectionMatrix(int width, int height)
@@ -63,18 +90,39 @@ void Camera::UpdateProjectionMatrix(int width, int height)
 	);
 }
 
+void Camera::SetAnglesFromDirection(const glm::vec3& direction)
+{
+	const glm::vec3 dir = glm::normalize(direction);
+
+	pitch_ = std::asin(glm::clamp(dir.y, -1.0f, 1.0f));
+	yaw_ = std::atan2(dir.z, dir.x);
+}
+
+
 void Camera::Move(GLFWwindow* window, const glm::vec3& direction, float factor)
 {
 	constexpr glm::vec3 up{ 0.0f, 1.0f, 0.0f };
-	const glm::vec3 right = glm::normalize(glm::cross(direction, up));
+
+	glm::vec3 horizontalForward = glm::vec3(direction.x, 0.0f, direction.z);
+
+	if (glm::length(horizontalForward) < 0.0001f)
+	{
+		horizontalForward = glm::vec3(0.0f, 0.0f, -1.0f);
+	}
+	else
+	{
+		horizontalForward = glm::normalize(horizontalForward);
+	}
+
+	const glm::vec3 right = glm::normalize(glm::cross(horizontalForward, up));
 
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		position_ += direction * factor;
+		position_ += horizontalForward * factor;
 	}
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		position_ -= direction * factor;
+		position_ -= horizontalForward * factor;
 	}
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
@@ -92,12 +140,16 @@ void Camera::Move(GLFWwindow* window, const glm::vec3& direction, float factor)
 	{
 		position_ -= up * factor;
 	}
+
+	// Keep camera above terrain enough for now.
+	position_.y = glm::max(position_.y, Config::camera_min_height);
 }
 
-void Camera::Rotate(GLFWwindow* window, float factor)
+void Camera::Rotate(GLFWwindow* window, float sensitivity)
 {
 	double current_cursor_x = 0.0;
 	double current_cursor_y = 0.0;
+
 	glfwGetCursorPos(window, &current_cursor_x, &current_cursor_y);
 
 	if (!cursor_initialized_)
@@ -119,9 +171,9 @@ void Camera::Rotate(GLFWwindow* window, float factor)
 	const glm::vec2 delta = current_cursor - prior_cursor_;
 	prior_cursor_ = current_cursor;
 
-	pitch_ -= delta.y * factor;
-	yaw_ += delta.x * factor;
+	yaw_ += delta.x * sensitivity;
+	pitch_ -= delta.y * sensitivity;
 
-	pitch_ = glm::clamp(pitch_, -1.5f, 1.5f);
+	pitch_ = glm::clamp(pitch_, -1.45f, 1.25f);
 	yaw_ = glm::mod(yaw_, glm::two_pi<float>());
 }

@@ -1,8 +1,0 @@
-# Blender 4.3.2 MTL File: 'ball.blend'
-# www.blender.org
-
-newmtl Ball
-map_Kd ball0.jpg
-Ka 1.0
-Pr 0.15
-Pm 0.0
